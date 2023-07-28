@@ -1,7 +1,10 @@
 package main
 
-import "github.com/zperf/tcpmon/cmd"
+import (
+	"github.com/zperf/tcpmon/tcpmon"
+)
 
 func main() {
-	cmd.Execute()
+	// cmd.Execute()
+	tcpmon.Ifconfig()
 }
