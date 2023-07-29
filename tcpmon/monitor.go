@@ -7,17 +7,20 @@ import (
 )
 
 type Monitor struct {
-	sockMon *SocketMonitor
+	sockMon  *SocketMonitor
+	ifaceMon *IfaceMonitor
 }
 
 func New() *Monitor {
 	return &Monitor{
-		sockMon: &SocketMonitor{},
+		sockMon:  &SocketMonitor{},
+		ifaceMon: &IfaceMonitor{},
 	}
 }
 
 func (m *Monitor) Collect(now time.Time) {
-	metric, err := m.sockMon.Collect(now)
+	// metric, err := m.sockMon.Collect(now)
+	metric, err := m.ifaceMon.Collect(now)
 	if err != nil {
 		log.Warn().Err(err).Msg("collect socket metrics failed")
 	}
