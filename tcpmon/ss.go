@@ -40,7 +40,7 @@ func ToPbState(s string) SocketState {
 }
 
 func RunSS(now time.Time) (*TcpMetric, string, error) {
-	c := cmd.NewCmd("/usr/bin/ss", "-4ntipmoHOna")
+	c := cmd.NewCmd("/usr/sbin/ss", "-4ntipmoHOna")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 

@@ -11,7 +11,7 @@ import (
 )
 
 func RunIfconfig(now time.Time) (*NicMetric, string, error) {
-	cmd := cmd.NewCmd("/sbin/ifconfig")
+	cmd := cmd.NewCmd("/usr/sbin/ifconfig")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 

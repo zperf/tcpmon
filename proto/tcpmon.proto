@@ -58,3 +58,30 @@ message NicMetric {
   // fields
   repeated IfaceMetric ifaces = 3;
 }
+
+message NetstatMetric {
+  uint32 ip_total_packets_received = 1;
+	uint32 ip_forwarded = 2;
+	uint32 ip_incoming_packets_discarded = 3;
+	uint32 ip_incoming_packets_delivered = 4;
+	uint32 ip_requests_sent_out = 5;
+	uint32 ip_outgoing_packets_dropped = 6;
+
+	uint32 tcp_active_connections_openings = 7;
+	uint32 tcp_passive_connection_openings = 8;
+	uint32 tcp_failed_connection_attempts = 9;
+	uint32 tcp_connection_resets_received = 10;
+	uint32 tcp_connections_established = 11;
+	uint32 tcp_segments_received = 12;
+	uint32 tcp_segments_send_out = 13;
+	uint32 tcp_segments_retransmited = 14;
+	uint32 tcp_bad_segments_received = 15;
+	uint32 tcp_resets_sent = 16;
+
+	uint32 udp_packets_received = 17;
+	uint32 udp_packets_to_unknown_port_received = 18;
+	uint32 udp_packet_receive_errors = 19;
+	uint32 udp_packets_sent = 20;
+	uint32 udp_receive_buffer_errors = 21;
+	uint32 udp_send_buffer_errors = 22;
+}
