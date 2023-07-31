@@ -8,6 +8,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/zperf/tcpmon/tcpmon"
 )
@@ -32,7 +33,7 @@ var startCmd = &cobra.Command{
 			cancel()
 		}()
 
-		err = m.Run(ctx)
+		err = m.Run(ctx, viper.GetDuration("interval"))
 		if err != nil {
 			log.Fatal().Err(err).Msg("failed to run")
 		}
