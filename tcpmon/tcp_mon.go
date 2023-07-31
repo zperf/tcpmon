@@ -1,0 +1,28 @@
+package tcpmon
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/cockroachdb/errors"
+	"google.golang.org/protobuf/proto"
+)
+
+type SocketMonitor struct{}
+
+func (m *SocketMonitor) Collect(now time.Time) (*StoreRequest, error) {
+	r, _, err := RunSS(now)
+	if err != nil {
+		return nil, err
+	}
+
+	val, err := proto.Marshal(r)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &StoreRequest{
+		Key:   fmt.Sprintf("%s/%v/", PrefixTcpRecord, now.UnixMilli()),
+		Value: val,
+	}, nil
+}

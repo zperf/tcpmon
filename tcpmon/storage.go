@@ -2,7 +2,6 @@ package tcpmon
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/cockroachdb/errors"
@@ -11,15 +10,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const PrefixSocketRecord = "s"
-const PrefixIfaceRecord = "if"
-
-// SEP Separator between key segments. eg.
-const SEP = "/"
-
-func pathJoin(s ...string) string {
-	return strings.Join(s, SEP)
-}
+const PrefixTcpRecord = "tcp"
+const PrefixNicRecord = "nic"
 
 type Datastore struct {
 	tx   chan *StoreRequest

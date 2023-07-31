@@ -11,7 +11,7 @@ import (
 
 type Monitor struct {
 	sockMon   *SocketMonitor
-	ifaceMon  *IfaceMonitor
+	ifaceMon  *NicMonitor
 	datastore *Datastore
 }
 
@@ -23,14 +23,14 @@ func New() (*Monitor, error) {
 
 	return &Monitor{
 		sockMon:   &SocketMonitor{},
-		ifaceMon:  &IfaceMonitor{},
+		ifaceMon:  &NicMonitor{},
 		datastore: NewDatastore(epoch),
 	}, nil
 }
 
 func (mon *Monitor) Collect(now time.Time, tx chan<- *StoreRequest) {
 	var wg sync.WaitGroup
-	wg.Add(1)
+	wg.Add(2)
 
 	go func() {
 		req, err := mon.sockMon.Collect(now)
@@ -41,14 +41,14 @@ func (mon *Monitor) Collect(now time.Time, tx chan<- *StoreRequest) {
 		wg.Done()
 	}()
 
-	//go func() {
-	//	m, err := mon.ifaceMon.Collect(now)
-	//	if err != nil {
-	//		log.Warn().Err(err).Msg("collect iface metrics failed")
-	//	}
-	//	tx <- m
-	//	wg.Done()
-	//}()
+	go func() {
+		req, err := mon.ifaceMon.Collect(now)
+		if err != nil {
+			log.Warn().Err(err).Msg("collect nic metrics failed")
+		}
+		tx <- req
+		wg.Done()
+	}()
 
 	wg.Wait()
 }
