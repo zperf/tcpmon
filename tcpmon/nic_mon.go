@@ -22,7 +22,7 @@ func (m *NicMonitor) Collect(now time.Time) (*StoreRequest, error) {
 	}
 
 	return &StoreRequest{
-		Key:   fmt.Sprintf("%s/%s/", PrefixNicRecord, now.UnixMilli()),
+		Key:   fmt.Sprintf("%s/%v/", PrefixNicRecord, now.UnixMilli()),
 		Value: val,
 	}, nil
 }
