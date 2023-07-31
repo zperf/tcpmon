@@ -11,3 +11,7 @@ release: proto
 .PHONY: proto
 proto:
 	protoc --go_out=. --go_opt=Mproto/tcpmon.proto=./tcpmon proto/tcpmon.proto
+
+.PHONY: check
+check: build
+	go test -race -v ./...
