@@ -11,7 +11,7 @@ import (
 type SocketMonitor struct{}
 
 func (m *SocketMonitor) Collect(now time.Time) (*StoreRequest, error) {
-	r, _, err := ss(now)
+	r, _, err := RunSS(now)
 	if err != nil {
 		return nil, err
 	}
@@ -22,7 +22,7 @@ func (m *SocketMonitor) Collect(now time.Time) (*StoreRequest, error) {
 	}
 
 	return &StoreRequest{
-		Key:   fmt.Sprintf("%s/%v/", PrefixSocketRecord, now.UnixMilli()),
+		Key:   fmt.Sprintf("%s/%v/", PrefixTcpRecord, now.UnixMilli()),
 		Value: val,
 	}, nil
 }

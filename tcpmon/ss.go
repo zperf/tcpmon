@@ -39,7 +39,7 @@ func ToPbState(s string) SocketState {
 	return st
 }
 
-func ss(now time.Time) (*TcpMetric, string, error) {
+func RunSS(now time.Time) (*TcpMetric, string, error) {
 	c := cmd.NewCmd("/usr/bin/ss", "-4ntipmoHOna")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()

@@ -10,7 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const PrefixSocketRecord = "s"
+const PrefixTcpRecord = "tcp"
 const PrefixNicRecord = "nic"
 
 type Datastore struct {
