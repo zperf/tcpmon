@@ -11,7 +11,7 @@ import (
 )
 
 const PrefixSocketRecord = "s"
-const PrefixIfaceRecord = "if"
+const PrefixNicRecord = "nic"
 
 type Datastore struct {
 	tx   chan *StoreRequest
