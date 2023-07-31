@@ -2,7 +2,6 @@ package tcpmon
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/cockroachdb/errors"
@@ -13,13 +12,6 @@ import (
 
 const PrefixSocketRecord = "s"
 const PrefixIfaceRecord = "if"
-
-// SEP Separator between key segments. eg.
-const SEP = "/"
-
-func pathJoin(s ...string) string {
-	return strings.Join(s, SEP)
-}
 
 type Datastore struct {
 	tx   chan *StoreRequest
