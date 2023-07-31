@@ -53,8 +53,8 @@ func (mon *Monitor) Collect(now time.Time, tx chan<- *StoreRequest) {
 	wg.Wait()
 }
 
-func (mon *Monitor) Run(ctx context.Context) error {
-	ticker := time.NewTicker(1000 * time.Millisecond)
+func (mon *Monitor) Run(ctx context.Context, interval time.Duration) error {
+	ticker := time.NewTicker(interval)
 	tx := mon.datastore.Tx()
 	for {
 		select {

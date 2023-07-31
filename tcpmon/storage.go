@@ -8,6 +8,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	boptions "github.com/dgraph-io/badger/v4/options"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 )
 
 const PrefixTcpRecord = "tcp"
@@ -50,7 +51,7 @@ func (d *Datastore) writer(initialEpoch uint64) {
 	epoch := initialEpoch
 
 	// TODO(fanyang) options for the db path
-	options := badger.DefaultOptions("/tmp/tcpmon").
+	options := badger.DefaultOptions(viper.GetString("db")).
 		// TODO(fanyang) log with zerolog
 		WithLoggingLevel(badger.WARNING).
 		WithInMemory(false).
