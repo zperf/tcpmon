@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"context"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -21,8 +24,23 @@ var startCmd = &cobra.Command{
 			Caller().
 			Logger()
 
-		m := tcpmon.New()
-		err := m.Run()
+		m, err := tcpmon.New()
+		if err != nil {
+			log.Fatal().Err(err).Msg("Create tcpmon failed")
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGINT)
+		go func() {
+			s := <-sigs
+			log.Info().Msgf("receive signal: %v", s)
+			cancel()
+		}()
+
+		err = m.Run(ctx)
 		if err != nil {
 			log.Fatal().Err(err).Msg("failed to run")
 		}

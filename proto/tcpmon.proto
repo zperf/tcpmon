@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+enum MetricType {
+  Tcp = 0;
+  Iface = 1;
+}
+
+// from linux/include/net/tcp_states.h
+enum SocketState {
+  TCP_ESTABLISHED = 0;
+  TCP_SYN_SENT = 1;
+  TCP_SYN_RECV = 2;
+  TCP_FIN_WAIT1 = 3;
+  TCP_FIN_WAIT2 = 4;
+  TCP_TIME_WAIT = 5;
+  TCP_CLOSE = 6;
+  TCP_CLOSE_WAIT = 7;
+  TCP_LAST_ACK = 8;
+  TCP_LISTEN = 9;
+  TCP_CLOSING = 10;
+  TCP_NEW_SYN_RECV = 11;
+}
+
+message SocketMetric {
+  SocketState state = 3;
+  uint32 RecvQ = 4;
+  uint32 SendQ = 5;
+  string LocalAddr = 6;
+  string PeerAddr = 7;
+}
+
+message TcpMetric {
+  // header
+  google.protobuf.Timestamp Timestamp = 1;
+  MetricType type = 2;
+  repeated SocketMetric sockets = 3;
+}
+
+
+message IfaceMetric {
+  // header
+  google.protobuf.Timestamp Timestamp = 1;
+  MetricType type = 2;
+  // fields
+}
