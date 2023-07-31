@@ -8,9 +8,17 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/go-cmd/cmd"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+type ssOption struct {
+	Path    string
+	Timeout time.Duration
+	Arg     string
+}
+
+var ssOptions *ssOption
 var socketStateMap map[string]SocketState
 
 func init() {
@@ -39,9 +47,36 @@ func ToPbState(s string) SocketState {
 	return st
 }
 
+func ParseSSOutput(t *TcpMetric, out []string) {
+	for _, line := range out {
+		fields := strings.FieldsFunc(line, func(c rune) bool {
+			return c == ' '
+		})
+
+		s := SocketMetric{}
+		s.State = ToPbState(fields[0])
+		n, _ := parseUint32(fields[1])
+		s.RecvQ = n
+		n, _ = parseUint32(fields[2])
+		s.SendQ = n
+		s.LocalAddr = fields[3]
+		s.PeerAddr = fields[4]
+
+		t.Sockets = append(t.Sockets, &s)
+	}
+}
+
 func RunSS(now time.Time) (*TcpMetric, string, error) {
-	c := cmd.NewCmd("/usr/sbin/ss", "-4ntipmoHOna")
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	if ssOptions == nil {
+		ssOptions = &ssOption{
+			Path:    viper.GetString("ss"),
+			Timeout: viper.GetDuration("command-timeout"),
+			Arg:     viper.GetString("ss-arg"),
+		}
+	}
+
+	c := cmd.NewCmd(ssOptions.Path, ssOptions.Arg)
+	ctx, cancel := context.WithTimeout(context.Background(), ssOptions.Timeout)
 	defer cancel()
 
 	select {
@@ -50,27 +85,8 @@ func RunSS(now time.Time) (*TcpMetric, string, error) {
 	case st := <-c.Start():
 		var t TcpMetric
 		t.Timestamp = timestamppb.New(now)
-		t.Type = MetricType_Tcp
-
-		var builder strings.Builder
-		for _, line := range st.Stdout {
-			builder.WriteString(line)
-			fields := strings.FieldsFunc(line, func(c rune) bool {
-				return c == ' '
-			})
-
-			s := SocketMetric{}
-			s.State = ToPbState(fields[0])
-			n, _ := parseUint32(fields[1])
-			s.RecvQ = n
-			n, _ = parseUint32(fields[2])
-			s.SendQ = n
-			s.LocalAddr = fields[3]
-			s.PeerAddr = fields[4]
-
-			t.Sockets = append(t.Sockets, &s)
-		}
-
-		return &t, builder.String(), nil
+		t.Type = MetricType_TCP
+		ParseSSOutput(&t, st.Stdout)
+		return &t, strings.Join(st.Stdout, "\n"), nil
 	}
 }

@@ -3,8 +3,8 @@ syntax = "proto3";
 import "google/protobuf/timestamp.proto";
 
 enum MetricType {
-  Tcp = 0;
-  Nic = 1;
+  TCP = 0;
+  NIC = 1;
 }
 
 // from linux/include/net/tcp_states.h
