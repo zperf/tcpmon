@@ -2,7 +2,6 @@ package tcpmon
 
 import (
 	"context"
-	"strconv"
 	"strings"
 	"time"
 
@@ -40,7 +39,7 @@ func ToPbState(s string) SocketState {
 	return st
 }
 
-func ss(now time.Time) (*TcpMetric, string, error) {
+func RunSS(now time.Time) (*TcpMetric, string, error) {
 	c := cmd.NewCmd("/usr/bin/ss", "-4ntipmoHOna")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -62,10 +61,10 @@ func ss(now time.Time) (*TcpMetric, string, error) {
 
 			s := SocketMetric{}
 			s.State = ToPbState(fields[0])
-			n, _ := strconv.ParseUint(fields[1], 10, 32)
-			s.RecvQ = uint32(n)
-			n, _ = strconv.ParseUint(fields[2], 10, 32)
-			s.SendQ = uint32(n)
+			n, _ := parseUint32(fields[1])
+			s.RecvQ = n
+			n, _ = parseUint32(fields[2])
+			s.SendQ = n
 			s.LocalAddr = fields[3]
 			s.PeerAddr = fields[4]
 

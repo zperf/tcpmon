@@ -5,13 +5,13 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
-type SocketMonitor struct{}
+type NicMonitor struct{}
 
-func (m *SocketMonitor) Collect(now time.Time) (*StoreRequest, error) {
-	r, _, err := ss(now)
+func (m *NicMonitor) Collect(now time.Time) (*StoreRequest, error) {
+	r, _, err := RunIfconfig(now)
 	if err != nil {
 		return nil, err
 	}
@@ -22,7 +22,7 @@ func (m *SocketMonitor) Collect(now time.Time) (*StoreRequest, error) {
 	}
 
 	return &StoreRequest{
-		Key:   fmt.Sprintf("%s/%v/", PrefixSocketRecord, now.UnixMilli()),
+		Key:   fmt.Sprintf("%s/%v/", PrefixNicRecord, now.UnixMilli()),
 		Value: val,
 	}, nil
 }
