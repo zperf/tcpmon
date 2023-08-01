@@ -76,7 +76,7 @@ func ParseNetstatOutput(r *NetstatMetric, out []string) {
 			} else if strings.Contains(line, "segments send out") {
 				r.TcpSegmentsSendOut, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "segments retransmited") {
-				r.TcpSegmentsRetransmited, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.TcpSegmentsRetransmitted, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "bad segments received") {
 				r.TcpBadSegmentsReceived, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "resets sent") {

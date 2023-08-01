@@ -139,7 +139,7 @@ IpExt:
 	assert.Equal(uint32(5), r.TcpConnectionsEstablished)
 	assert.Equal(uint32(1059991), r.TcpSegmentsReceived)
 	assert.Equal(uint32(944977), r.TcpSegmentsSendOut)
-	assert.Equal(uint32(2328), r.TcpSegmentsRetransmited)
+	assert.Equal(uint32(2328), r.TcpSegmentsRetransmitted)
 	assert.Equal(uint32(0), r.TcpBadSegmentsReceived)
 	assert.Equal(uint32(256), r.TcpResetsSent)
 

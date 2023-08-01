@@ -80,7 +80,7 @@ message NetstatMetric {
 	uint32 tcp_connections_established = 13;
 	uint32 tcp_segments_received = 14;
 	uint32 tcp_segments_send_out = 15;
-	uint32 tcp_segments_retransmited = 16;
+	uint32 tcp_segments_retransmitted = 16;
 	uint32 tcp_bad_segments_received = 17;
 	uint32 tcp_resets_sent = 18;
 
