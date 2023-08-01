@@ -48,53 +48,53 @@ func ParseNetstatOutput(r *NetstatMetric, out []string) {
 		}
 		if flag == "Ip:" {
 			if strings.Contains(line, "total packets received") {
-				r.IpTotalPacketsReceived, _ = parseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.IpTotalPacketsReceived, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "forwarded") {
-				r.IpForwarded, _ = parseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.IpForwarded, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "incoming packets discarded") {
-				r.IpIncomingPacketsDiscarded, _ = parseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.IpIncomingPacketsDiscarded, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "incoming packets delivered") {
-				r.IpIncomingPacketsDelivered, _ = parseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.IpIncomingPacketsDelivered, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "requests sent out") {
-				r.IpRequestsSentOut, _ = parseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.IpRequestsSentOut, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "outgoing packets dropped") {
-				r.IpOutgoingPacketsDropped, _ = parseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.IpOutgoingPacketsDropped, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			}
 		} else if flag == "Tcp:" {
 			if strings.Contains(line, "active connections openings") {
-				r.TcpActiveConnectionsOpenings, _ = parseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.TcpActiveConnectionsOpenings, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "passive connection openings") {
-				r.TcpPassiveConnectionOpenings, _ = parseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.TcpPassiveConnectionOpenings, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "failed connection attempts") {
-				r.TcpFailedConnectionAttempts, _ = parseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.TcpFailedConnectionAttempts, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "connection resets received") {
-				r.TcpConnectionResetsReceived, _ = parseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.TcpConnectionResetsReceived, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "connections established") {
-				r.TcpConnectionsEstablished, _ = parseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.TcpConnectionsEstablished, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "segments received") && !strings.Contains(line, "bad") {
-				r.TcpSegmentsReceived, _ = parseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.TcpSegmentsReceived, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "segments send out") {
-				r.TcpSegmentsSendOut, _ = parseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.TcpSegmentsSendOut, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "segments retransmited") {
-				r.TcpSegmentsRetransmited, _ = parseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.TcpSegmentsRetransmited, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "bad segments received") {
-				r.TcpBadSegmentsReceived, _ = parseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.TcpBadSegmentsReceived, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "resets sent") {
-				r.TcpResetsSent, _ = parseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.TcpResetsSent, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			}
 		} else if flag == "Udp:" {
 			if strings.Contains(line, "packets received") {
-				r.UdpPacketsReceived, _ = parseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.UdpPacketsReceived, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "packets to unknown port received") {
-				r.UdpPacketsToUnknownPortReceived, _ = parseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.UdpPacketsToUnknownPortReceived, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "packet receive errors") {
-				r.UdpPacketReceiveErrors, _ = parseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.UdpPacketReceiveErrors, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "packets sent") {
-				r.UdpPacketsSent, _ = parseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.UdpPacketsSent, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "receive buffer errors") {
-				r.UdpReceiveBufferErrors, _ = parseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.UdpReceiveBufferErrors, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "send buffer errors") {
-				r.UdpSendBufferErrors, _ = parseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.UdpSendBufferErrors, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			}
 		}
 	}

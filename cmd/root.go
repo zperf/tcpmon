@@ -25,9 +25,13 @@ func fatalIf(err error) {
 func Execute() {
 	initViper()
 
+	rootCmd.Flags().Bool("verbose", false, "Verbose mode")
+
 	// cmd: start
 	startCmd.Flags().BoolP("foreground", "f", false, "Run in foreground")
 	fatalIf(viper.BindPFlag("foreground", startCmd.Flags().Lookup("foreground")))
+	startCmd.Flags().String("listen", "0.0.0.0:6789", "HTTP server listening at this address")
+	fatalIf(viper.BindPFlag("listen", startCmd.Flags().Lookup("listen")))
 	rootCmd.AddCommand(startCmd)
 
 	// path

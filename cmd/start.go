@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"os"
 	"os/signal"
 	"syscall"
 
@@ -22,16 +21,8 @@ var startCmd = &cobra.Command{
 			log.Fatal().Err(err).Msg("Create tcpmon failed")
 		}
 
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		sigs := make(chan os.Signal, 1)
-		signal.Notify(sigs, syscall.SIGINT)
-		go func() {
-			s := <-sigs
-			log.Info().Msgf("receive signal: %v", s)
-			cancel()
-		}()
+		ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+		defer stop()
 
 		err = m.Run(ctx, viper.GetDuration("interval"))
 		if err != nil {

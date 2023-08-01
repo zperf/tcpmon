@@ -2,11 +2,13 @@ package tcpmon
 
 import (
 	"context"
+	"net/http"
 	"sync"
 	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 )
 
 type Monitor struct {
@@ -14,6 +16,7 @@ type Monitor struct {
 	ifaceMon   *NicMonitor
 	netstatMon *NetstatMonitor
 	datastore  *Datastore
+	httpServer *http.Server
 }
 
 func New() (*Monitor, error) {
@@ -23,10 +26,10 @@ func New() (*Monitor, error) {
 	}
 
 	return &Monitor{
-		sockMon:    &SocketMonitor{},
-		ifaceMon:   &NicMonitor{},
+		sockMon:   &SocketMonitor{},
+		ifaceMon:  &NicMonitor{},
 		netstatMon: &NetstatMonitor{},
-		datastore:  NewDatastore(epoch),
+		datastore: NewDatastore(epoch, 120),
 	}, nil
 }
 
@@ -67,11 +70,15 @@ func (mon *Monitor) Collect(now time.Time, tx chan<- *StoreRequest) {
 func (mon *Monitor) Run(ctx context.Context, interval time.Duration) error {
 	ticker := time.NewTicker(interval)
 	tx := mon.datastore.Tx()
+
+	mon.startHttpServer(viper.GetString("listen"))
+
 	for {
 		select {
 		case now := <-ticker.C:
 			mon.Collect(now, tx)
 		case <-ctx.Done():
+			log.Info().Err(ctx.Err()).Msg("shutting down...")
 			mon.Close()
 			return nil
 		}
@@ -79,6 +86,14 @@ func (mon *Monitor) Run(ctx context.Context, interval time.Duration) error {
 }
 
 func (mon *Monitor) Close() {
+	if mon.httpServer != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		err := mon.httpServer.Shutdown(ctx)
+		if err != nil {
+			log.Warn().Err(err).Msg("failed shutdown HTTP server")
+		}
+	}
 	if mon.datastore != nil {
 		mon.datastore.Close()
 	}

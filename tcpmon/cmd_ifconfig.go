@@ -31,19 +31,19 @@ func ParseIfconfigOutput(nics *NicMetric, out []string) {
 			fields := strings.FieldsFunc(line, func(c rune) bool {
 				return c == ' '
 			})
-			r.RxErrors, _ = parseUint32(fields[2])
-			r.RxDropped, _ = parseUint32(fields[4])
-			r.RxOverruns, _ = parseUint32(fields[6])
-			r.RxFrame, _ = parseUint32(fields[8])
+			r.RxErrors, _ = ParseUint32(fields[2])
+			r.RxDropped, _ = ParseUint32(fields[4])
+			r.RxOverruns, _ = ParseUint32(fields[6])
+			r.RxFrame, _ = ParseUint32(fields[8])
 		} else if strings.Contains(line, "TX errors ") {
 			fields := strings.FieldsFunc(line, func(c rune) bool {
 				return c == ' '
 			})
-			r.TxErrors, _ = parseUint32(fields[2])
-			r.TxDropped, _ = parseUint32(fields[4])
-			r.TxOverruns, _ = parseUint32(fields[6])
-			r.TxCarrier, _ = parseUint32(fields[8])
-			r.TxCollisions, _ = parseUint32(fields[10])
+			r.TxErrors, _ = ParseUint32(fields[2])
+			r.TxDropped, _ = ParseUint32(fields[4])
+			r.TxOverruns, _ = ParseUint32(fields[6])
+			r.TxCarrier, _ = ParseUint32(fields[8])
+			r.TxCollisions, _ = ParseUint32(fields[10])
 			nics.Ifaces = append(nics.Ifaces, r)
 		}
 	}
