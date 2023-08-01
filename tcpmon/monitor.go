@@ -10,9 +10,10 @@ import (
 )
 
 type Monitor struct {
-	sockMon   *SocketMonitor
-	ifaceMon  *NicMonitor
-	datastore *Datastore
+	sockMon    *SocketMonitor
+	ifaceMon   *NicMonitor
+	netstatMon *NetstatMonitor
+	datastore  *Datastore
 }
 
 func New() (*Monitor, error) {
@@ -22,15 +23,16 @@ func New() (*Monitor, error) {
 	}
 
 	return &Monitor{
-		sockMon:   &SocketMonitor{},
-		ifaceMon:  &NicMonitor{},
-		datastore: NewDatastore(epoch),
+		sockMon:    &SocketMonitor{},
+		ifaceMon:   &NicMonitor{},
+		netstatMon: &NetstatMonitor{},
+		datastore:  NewDatastore(epoch),
 	}, nil
 }
 
 func (mon *Monitor) Collect(now time.Time, tx chan<- *StoreRequest) {
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(3)
 
 	go func() {
 		req, err := mon.sockMon.Collect(now)
@@ -45,6 +47,15 @@ func (mon *Monitor) Collect(now time.Time, tx chan<- *StoreRequest) {
 		req, err := mon.ifaceMon.Collect(now)
 		if err != nil {
 			log.Warn().Err(err).Msg("collect nic metrics failed")
+		}
+		tx <- req
+		wg.Done()
+	}()
+
+	go func() {
+		req, err := mon.netstatMon.Collect(now)
+		if err != nil {
+			log.Warn().Err(err).Msg("collect net metrics failed")
 		}
 		tx <- req
 		wg.Done()
