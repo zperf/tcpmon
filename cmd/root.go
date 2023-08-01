@@ -39,6 +39,10 @@ func Execute() {
 	fatalIf(viper.BindPFlag("ss", rootCmd.PersistentFlags().Lookup("ss")))
 	rootCmd.PersistentFlags().String("ss-arg", "-4ntipmoHOna", "Set the arg for ss")
 	fatalIf(viper.BindPFlag("ss-arg", rootCmd.PersistentFlags().Lookup("ss-arg")))
+	rootCmd.PersistentFlags().String("netstat", "/usr/bin/netstat", "Command 'netstat' path")
+	fatalIf(viper.BindPFlag("netstat", rootCmd.PersistentFlags().Lookup("netstat")))
+	rootCmd.PersistentFlags().String("netstat-arg", "-s", "Set the arg for netstat")
+	fatalIf(viper.BindPFlag("netstat-arg", rootCmd.PersistentFlags().Lookup("netstat-arg")))
 
 	// timeout
 	rootCmd.PersistentFlags().DurationP("command-timeout", "c", time.Second,
