@@ -2,6 +2,7 @@ package tcpmon
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/cockroachdb/errors"
@@ -9,6 +10,9 @@ import (
 	boptions "github.com/dgraph-io/badger/v4/options"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
+	"github.com/ugurcsen/gods-generic/queues"
+	"github.com/ugurcsen/gods-generic/queues/circularbuffer"
+	"google.golang.org/protobuf/proto"
 )
 
 const PrefixTcpRecord = "tcp"
@@ -18,6 +22,13 @@ const PrefixNetRecord = "net"
 type Datastore struct {
 	tx   chan *StoreRequest
 	done chan struct{}
+	db   *badger.DB
+
+	// peek window
+	windowMu   sync.RWMutex
+	windowSize int
+	window     queues.Queue[string]
+
 	wait sync.WaitGroup
 }
 
@@ -26,15 +37,31 @@ type StoreRequest struct {
 	Value []byte
 }
 
-func NewDatastore(epoch uint64) *Datastore {
+func NewDatastore(epoch uint64, windowSize int) *Datastore {
+	options := badger.DefaultOptions(viper.GetString("db")).
+		// TODO(fanyang) log with zerolog
+		WithLoggingLevel(badger.WARNING).
+		WithInMemory(false).
+		WithCompression(boptions.ZSTD).
+		WithValueLogFileSize(100 * 1000 * 1000) // MB
+
+	db, err := badger.Open(options)
+	if err != nil {
+		log.Fatal().Err(errors.WithStack(err)).Msg("failed open database")
+	}
+
 	log.Info().Uint64("epoch", epoch).Msg("datastore created")
 	tx := make(chan *StoreRequest, 256)
+
 	d := &Datastore{
-		done: make(chan struct{}),
-		tx:   tx,
+		done:       make(chan struct{}),
+		tx:         tx,
+		db:         db,
+		windowSize: windowSize,
+		window:     circularbuffer.New[string](windowSize),
 	}
 	d.wait.Add(1)
-	go d.writer(epoch)
+	go d.writer(epoch, d.window)
 	return d
 }
 
@@ -48,28 +75,75 @@ func (d *Datastore) Close() {
 	d.wait.Wait()
 }
 
-func (d *Datastore) writer(initialEpoch uint64) {
-	epoch := initialEpoch
-
-	// TODO(fanyang) options for the db path
-	options := badger.DefaultOptions(viper.GetString("db")).
-		// TODO(fanyang) log with zerolog
-		WithLoggingLevel(badger.WARNING).
-		WithInMemory(false).
-		WithCompression(boptions.ZSTD).
-		WithValueLogFileSize(100 * 1000 * 1000) // MB
-
-	db, err := badger.Open(options)
-	if err != nil {
-		log.Fatal().Err(errors.WithStack(err)).Msg("failed open database")
+func (d *Datastore) LastKeys(batch int) []string {
+	if batch > d.windowSize {
+		log.Fatal().Err(errors.New("invalid batch size")).Int("batch", batch).
+			Msg("please increase the window while creating datastore")
 	}
-	defer func() {
-		err := db.Close()
-		log.Info().Err(err).Msg("db closed")
-		d.wait.Done()
-	}()
+	d.windowMu.RLock()
+	defer d.windowMu.RUnlock()
 
+	if d.window.Size() > batch {
+		size := d.window.Size()
+		return d.window.Values()[size-batch : size]
+	}
+	return d.window.Values()
+}
+
+func (d *Datastore) GetBatch(keys []string) ([]map[string]any, error) {
+	rawValues := make([][]byte, len(keys))
+	err := d.db.View(func(txn *badger.Txn) error {
+		for i, key := range keys {
+			itr, err := txn.Get([]byte(key))
+			if err != nil {
+				rawValues[i] = []byte(ErrorStr(err))
+			} else {
+				rawValues[i], err = itr.ValueCopy(nil)
+				if err != nil {
+					rawValues[i] = []byte(ErrorStr(err))
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	values := make([]map[string]any, len(keys))
+	for i, buf := range rawValues {
+		key := keys[i]
+		if strings.HasPrefix(key, PrefixTcpRecord) {
+			var metric TcpMetric
+			err := proto.Unmarshal(buf, &metric)
+			if err != nil {
+				values[i] = ErrorJSON(err)
+				break
+			}
+			values[i] = ToProtojson(&metric)
+		} else if strings.HasPrefix(key, PrefixNicRecord) {
+			var metric NicMetric
+			err := proto.Unmarshal(buf, &metric)
+			if err != nil {
+				values[i] = ErrorJSON(err)
+				break
+			}
+			values[i] = ToProtojson(&metric)
+		} else {
+			log.Fatal().Str("key", key).Msg("unknown key prefix")
+		}
+	}
+	return values, nil
+}
+
+func (d *Datastore) writer(initialEpoch uint64, window queues.Queue[string]) {
 	log.Info().Msg("datastore writer started")
+	defer func(wait *sync.WaitGroup) {
+		wait.Done()
+		log.Info().Msg("datastore writer exited")
+	}(&d.wait)
+
+	epoch := initialEpoch
 	for {
 		var req *StoreRequest
 		select {
@@ -85,15 +159,25 @@ func (d *Datastore) writer(initialEpoch uint64) {
 			continue
 		}
 
-		req.Key = fmt.Sprintf("%s%v", req.Key, epoch)
+		key := fmt.Sprintf("%s%v", req.Key, epoch)
+		req.Key = key
 		epoch++
 
 		// TODO(fanyang) batch write txn
-		err := db.Update(func(txn *badger.Txn) error {
+		err := d.db.Update(func(txn *badger.Txn) error {
 			return txn.Set([]byte(req.Key), req.Value)
 		})
+		log.Trace().Str("key", req.Key).Int("valueLen", len(req.Value)).Msg("write new item")
+
 		if err != nil {
 			log.Warn().Err(err).Msg("failed to insert db")
 		}
+
+		d.windowMu.Lock()
+		if window.Size() >= d.windowSize {
+			window.Dequeue()
+		}
+		window.Enqueue(key)
+		d.windowMu.Unlock()
 	}
 }

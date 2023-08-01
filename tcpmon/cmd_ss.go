@@ -55,9 +55,9 @@ func ParseSSOutput(t *TcpMetric, out []string) {
 
 		s := SocketMetric{}
 		s.State = ToPbState(fields[0])
-		n, _ := parseUint32(fields[1])
+		n, _ := ParseUint32(fields[1])
 		s.RecvQ = n
-		n, _ = parseUint32(fields[2])
+		n, _ = ParseUint32(fields[2])
 		s.SendQ = n
 		s.LocalAddr = fields[3]
 		s.PeerAddr = fields[4]
