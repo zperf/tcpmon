@@ -1,3 +1,11 @@
+ifeq (, $(shell which protoc-gen-go))
+$(error "protoc-gen-go not found in $$PATH, consider run `make install-deps` to install, then adds $$GOPATH/bin to your $$PATH")
+endif
+
+ifeq (, $(shell which golangci-lint))
+$(error "golangci-lint not found in $$PATH, consider run `make install-deps` to install, then adds $$GOPATH/bin to your $$PATH")
+endif
+
 all: build
 
 .PHONY: build
@@ -14,6 +22,7 @@ proto:
 
 .PHONY: check
 check: build
+	golangci-lint run
 	go test -race -v ./...
 
 .PHONY: install-deps
