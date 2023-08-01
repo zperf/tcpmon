@@ -5,6 +5,7 @@ import "google/protobuf/timestamp.proto";
 enum MetricType {
   TCP = 0;
   NIC = 1;
+  NET = 2;
 }
 
 // from linux/include/net/tcp_states.h
@@ -58,4 +59,35 @@ message NicMetric {
   MetricType type = 2;
   // fields
   repeated IfaceMetric ifaces = 3;
+}
+
+message NetstatMetric {
+  // header
+  google.protobuf.Timestamp Timestamp = 1;
+  MetricType type = 2;
+  // fields
+  uint32 ip_total_packets_received = 3;
+	uint32 ip_forwarded = 4;
+	uint32 ip_incoming_packets_discarded = 5;
+	uint32 ip_incoming_packets_delivered = 6;
+	uint32 ip_requests_sent_out = 7;
+	uint32 ip_outgoing_packets_dropped = 8;
+
+	uint32 tcp_active_connections_openings = 9;
+	uint32 tcp_passive_connection_openings = 10;
+	uint32 tcp_failed_connection_attempts = 11;
+	uint32 tcp_connection_resets_received = 12;
+	uint32 tcp_connections_established = 13;
+	uint32 tcp_segments_received = 14;
+	uint32 tcp_segments_send_out = 15;
+	uint32 tcp_segments_retransmited = 16;
+	uint32 tcp_bad_segments_received = 17;
+	uint32 tcp_resets_sent = 18;
+
+	uint32 udp_packets_received = 19;
+	uint32 udp_packets_to_unknown_port_received = 20;
+	uint32 udp_packet_receive_errors = 21;
+	uint32 udp_packets_sent = 22;
+	uint32 udp_receive_buffer_errors = 23;
+	uint32 udp_send_buffer_errors = 24;
 }

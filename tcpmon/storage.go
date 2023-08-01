@@ -13,6 +13,7 @@ import (
 
 const PrefixTcpRecord = "tcp"
 const PrefixNicRecord = "nic"
+const PrefixNetRecord = "net"
 
 type Datastore struct {
 	tx   chan *StoreRequest
