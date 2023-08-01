@@ -75,7 +75,10 @@ func ParseNetstatOutput(r *NetstatMetric, out []string) {
 				r.TcpSegmentsReceived, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "segments send out") {
 				r.TcpSegmentsSendOut, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
-			} else if strings.Contains(line, "segments retransmited") {
+			} else if strings.Contains(line, "segments retransmit") {
+				// NOTE: in the newer Linux version (like fc38), `netstat -s | grep retrans` will return retransmitted
+				// The older (like el7) will return a typo: retransmited
+				// We should take the common prefix `retransmit`
 				r.TcpSegmentsRetransmitted, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
 			} else if strings.Contains(line, "bad segments received") {
 				r.TcpBadSegmentsReceived, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
