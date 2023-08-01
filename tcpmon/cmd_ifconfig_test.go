@@ -46,7 +46,7 @@ lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
 	nic.Timestamp = timestamppb.New(time.Now())
 	ParseIfconfigOutput(&nic, lines)
 
-	assert.Equal(uint32(7), nic.Ifaces[0].TXOverruns)
-	assert.Equal(uint32(99999), nic.Ifaces[1].TXDropped)
-	assert.Equal(uint32(10000), nic.Ifaces[2].RXOverruns)
+	assert.Equal(uint32(7), nic.Ifaces[0].TxOverruns)
+	assert.Equal(uint32(99999), nic.Ifaces[1].TxDropped)
+	assert.Equal(uint32(10000), nic.Ifaces[2].RxOverruns)
 }

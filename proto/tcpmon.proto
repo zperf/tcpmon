@@ -26,35 +26,36 @@ enum SocketState {
 
 message SocketMetric {
   SocketState state = 3;
-  uint32 RecvQ = 4;
-  uint32 SendQ = 5;
-  string LocalAddr = 6;
-  string PeerAddr = 7;
+  uint32 recv_q = 4;
+  uint32 send_q = 5;
+  string local_addr = 6;
+  string peer_addr = 7;
 }
 
 message TcpMetric {
   // header
-  google.protobuf.Timestamp Timestamp = 1;
+  google.protobuf.Timestamp timestamp = 1;
   MetricType type = 2;
+  // fields
   repeated SocketMetric sockets = 3;
 }
 
 message IfaceMetric {
-  string Name = 1;
-  uint32 RXErrors = 2;
-  uint32 RXDropped = 3;
-  uint32 RXOverruns = 4;
-  uint32 RXFrame = 5;
-  uint32 TXErrors = 6;
-  uint32 TXDropped = 7;
-  uint32 TXOverruns = 8;
-  uint32 TXCarrier = 9;
-  uint32 TXCollisions = 10;
+  string name = 1;
+  uint32 rx_errors = 2;
+  uint32 rx_dropped = 3;
+  uint32 rx_overruns = 4;
+  uint32 rx_frame = 5;
+  uint32 tx_errors = 6;
+  uint32 tx_dropped = 7;
+  uint32 tx_overruns = 8;
+  uint32 tx_carrier = 9;
+  uint32 tx_collisions = 10;
 }
 
 message NicMetric {
   // header
-  google.protobuf.Timestamp Timestamp = 1;
+  google.protobuf.Timestamp timestamp = 1;
   MetricType type = 2;
   // fields
   repeated IfaceMetric ifaces = 3;
