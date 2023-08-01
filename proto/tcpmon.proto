@@ -63,7 +63,7 @@ message NicMetric {
 
 message NetstatMetric {
   // header
-  google.protobuf.Timestamp Timestamp = 1;
+  google.protobuf.Timestamp timestamp = 1;
   MetricType type = 2;
   // fields
   uint32 ip_total_packets_received = 3;
