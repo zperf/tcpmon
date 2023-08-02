@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/dgraph-io/badger/v4"
@@ -30,6 +32,7 @@ type Datastore struct {
 	window     queues.Queue[string]
 
 	wait sync.WaitGroup
+	stop int32
 }
 
 type KVPair struct {
@@ -59,9 +62,11 @@ func NewDatastore(epoch uint64, windowSize int) *Datastore {
 		db:         db,
 		windowSize: windowSize,
 		window:     circularbuffer.New[string](windowSize),
+		stop:       0,
 	}
 	d.wait.Add(1)
 	go d.writer(epoch, d.window)
+	go d.periodicDelete(10000, 100)
 	return d
 }
 
@@ -72,6 +77,7 @@ func (d *Datastore) Tx() chan<- *KVPair {
 
 func (d *Datastore) Close() {
 	close(d.done)
+	atomic.StoreInt32(&d.stop, 1)
 	d.wait.Wait()
 }
 
@@ -179,5 +185,52 @@ func (d *Datastore) writer(initialEpoch uint64, window queues.Queue[string]) {
 		}
 		window.Enqueue(key)
 		d.windowMu.Unlock()
+	}
+}
+
+func (d *Datastore) getSize() int {
+	txn := d.db.NewTransaction(false)
+	defer txn.Discard()
+
+	opts := badger.DefaultIteratorOptions
+	it := txn.NewIterator(opts)
+	defer it.Close()
+
+	totalCount := 0
+	for it.Rewind(); it.Valid(); it.Next() {
+		totalCount++
+	}
+	return totalCount
+}
+
+func (d *Datastore) periodicDelete(maxSize, deleteSize int) {
+	for atomic.LoadInt32(&d.stop) == 0 {
+		totalCount := d.getSize()
+		if totalCount > maxSize {
+			txn := d.db.NewTransaction(true)
+			opts := badger.DefaultIteratorOptions
+			it := txn.NewIterator(opts)
+			k := 0
+			for it.Rewind(); it.Valid(); it.Next() {
+				if k >= deleteSize {
+					break
+				}
+				item := it.Item()
+				key := item.Key()
+				err := txn.Delete(key)
+				if err != nil {
+					log.Warn().Err(err).Str("key", string(key)).Msg("failed to delete item")
+				} else {
+					log.Trace().Str("key", string(key)).Msg("delete old item")
+				}
+				k++
+			}
+			it.Close()
+			err := txn.Commit()
+			if err != nil {
+				log.Warn().Err(err).Msg("failed to commit")
+			}
+		}
+		time.Sleep(1 * time.Second)
 	}
 }

@@ -22,7 +22,7 @@ func (m *NetstatMonitor) Collect(now time.Time) (*KVPair, error) {
 	}
 
 	return &KVPair{
-		Key:   fmt.Sprintf("%s/%v/", PrefixNetRecord, now.UnixMilli()),
+		Key:   fmt.Sprintf("%v/%s/", now.UnixMilli(), PrefixNetRecord),
 		Value: val,
 	}, nil
 }
