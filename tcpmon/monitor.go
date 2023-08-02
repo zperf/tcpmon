@@ -38,30 +38,33 @@ func (mon *Monitor) Collect(now time.Time, tx chan<- *KVPair) {
 	wg.Add(3)
 
 	go func() {
+		defer wg.Done()
 		req, err := mon.sockMon.Collect(now)
 		if err != nil {
 			log.Warn().Err(err).Msg("collect socket metrics failed")
+			return
 		}
 		tx <- req
-		wg.Done()
 	}()
 
 	go func() {
+		defer wg.Done()
 		req, err := mon.ifaceMon.Collect(now)
 		if err != nil {
 			log.Warn().Err(err).Msg("collect nic metrics failed")
+			return
 		}
 		tx <- req
-		wg.Done()
 	}()
 
 	go func() {
+		defer wg.Done()
 		req, err := mon.netstatMon.Collect(now)
 		if err != nil {
 			log.Warn().Err(err).Msg("collect net metrics failed")
+			return
 		}
 		tx <- req
-		wg.Done()
 	}()
 
 	wg.Wait()
