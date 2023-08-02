@@ -20,7 +20,7 @@ const PrefixNicRecord = "nic"
 const PrefixNetRecord = "net"
 
 type Datastore struct {
-	tx   chan *StoreRequest
+	tx   chan *KVPair
 	done chan struct{}
 	db   *badger.DB
 
@@ -32,7 +32,7 @@ type Datastore struct {
 	wait sync.WaitGroup
 }
 
-type StoreRequest struct {
+type KVPair struct {
 	Key   string
 	Value []byte
 }
@@ -51,7 +51,7 @@ func NewDatastore(epoch uint64, windowSize int) *Datastore {
 	}
 
 	log.Info().Uint64("epoch", epoch).Msg("datastore created")
-	tx := make(chan *StoreRequest, 256)
+	tx := make(chan *KVPair, 256)
 
 	d := &Datastore{
 		done:       make(chan struct{}),
@@ -66,7 +66,7 @@ func NewDatastore(epoch uint64, windowSize int) *Datastore {
 }
 
 // Tx returns a send-only channel
-func (d *Datastore) Tx() chan<- *StoreRequest {
+func (d *Datastore) Tx() chan<- *KVPair {
 	return d.tx
 }
 
@@ -145,7 +145,7 @@ func (d *Datastore) writer(initialEpoch uint64, window queues.Queue[string]) {
 
 	epoch := initialEpoch
 	for {
-		var req *StoreRequest
+		var req *KVPair
 		select {
 		case req = <-d.tx:
 			break
@@ -155,7 +155,7 @@ func (d *Datastore) writer(initialEpoch uint64, window queues.Queue[string]) {
 
 		if len(req.Key) <= 0 || len(req.Value) <= 0 {
 			log.Warn().Str("Key", req.Key).Int("ValueLen", len(req.Value)).
-				Msg("ignore invalid StoreRequest")
+				Msg("ignore invalid KVPair")
 			continue
 		}
 

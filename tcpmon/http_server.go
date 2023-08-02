@@ -10,8 +10,12 @@ import (
 	"github.com/spf13/viper"
 )
 
-func putRoutes(router *gin.Engine, ds *Datastore) {
-	router.GET("/last", func(c *gin.Context) {
+func InitRoutes(router *gin.Engine, ds *Datastore) {
+	router.GET("/last", GetLast(ds))
+}
+
+func GetLast(ds *Datastore) func(c *gin.Context) {
+	return func(c *gin.Context) {
 		// batch size
 		var batch int
 		const batchDefault = 10
@@ -60,7 +64,7 @@ func putRoutes(router *gin.Engine, ds *Datastore) {
 		c.JSON(http.StatusOK, gin.H{
 			"window": pairs,
 		})
-	})
+	}
 }
 
 func (mon *Monitor) startHttpServer(addr string) {
@@ -72,7 +76,7 @@ func (mon *Monitor) startHttpServer(addr string) {
 	engine := gin.New()
 	engine.Use(httpLogger())
 	engine.Use(gin.Recovery())
-	putRoutes(engine, mon.datastore)
+	InitRoutes(engine, mon.datastore)
 
 	mon.httpServer = &http.Server{
 		Addr:    addr,

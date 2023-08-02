@@ -10,7 +10,7 @@ import (
 
 type NicMonitor struct{}
 
-func (m *NicMonitor) Collect(now time.Time) (*StoreRequest, error) {
+func (m *NicMonitor) Collect(now time.Time) (*KVPair, error) {
 	r, _, err := RunIfconfig(now)
 	if err != nil {
 		return nil, err
@@ -21,7 +21,7 @@ func (m *NicMonitor) Collect(now time.Time) (*StoreRequest, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	return &StoreRequest{
+	return &KVPair{
 		Key:   fmt.Sprintf("%s/%v/", PrefixNicRecord, now.UnixMilli()),
 		Value: val,
 	}, nil

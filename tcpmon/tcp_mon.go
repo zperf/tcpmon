@@ -10,7 +10,7 @@ import (
 
 type SocketMonitor struct{}
 
-func (m *SocketMonitor) Collect(now time.Time) (*StoreRequest, error) {
+func (m *SocketMonitor) Collect(now time.Time) (*KVPair, error) {
 	r, _, err := RunSS(now)
 	if err != nil {
 		return nil, err
@@ -21,7 +21,7 @@ func (m *SocketMonitor) Collect(now time.Time) (*StoreRequest, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	return &StoreRequest{
+	return &KVPair{
 		Key:   fmt.Sprintf("%s/%v/", PrefixTcpRecord, now.UnixMilli()),
 		Value: val,
 	}, nil
