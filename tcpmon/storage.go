@@ -15,10 +15,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const PrefixTcpRecord = "tcp"
-const PrefixNicRecord = "nic"
-const PrefixNetRecord = "net"
-
 type Datastore struct {
 	tx   chan *KVPair
 	done chan struct{}
@@ -30,11 +26,6 @@ type Datastore struct {
 	window     queues.Queue[string]
 
 	wait sync.WaitGroup
-}
-
-type KVPair struct {
-	Key   string
-	Value []byte
 }
 
 func NewDatastore(epoch uint64, windowSize int) *Datastore {
@@ -88,6 +79,68 @@ func (d *Datastore) LastKeys(batch int) []string {
 		return d.window.Values()[size-batch : size]
 	}
 	return d.window.Values()
+}
+
+// GetPrefix returns all
+func (d *Datastore) GetPrefix(prefix []byte, maxCount int, hasValue bool) ([]KVPair, error) {
+	r := make([]KVPair, 0)
+
+	err := d.db.View(func(txn *badger.Txn) (err error) {
+		err = nil
+		options := badger.DefaultIteratorOptions
+		options.Reverse = true
+		options.Prefix = prefix
+		itr := txn.NewIterator(options)
+		defer itr.Close()
+
+		count := 0
+		// append 0xff is a trick for reverse iteration
+		// see more: https://github.com/dgraph-io/badger/issues/436#issuecomment-400095559
+		for itr.Seek(append(prefix, 0xff)); itr.Valid() && count < maxCount; itr.Next() {
+			count++
+			item := itr.Item()
+			key := item.Key()
+			var value []byte
+			if hasValue {
+				value, err = item.ValueCopy(nil)
+				if err != nil {
+					return errors.WithStack(err)
+				}
+			} else {
+				value = nil
+			}
+			r = append(r, KVPair{
+				Key:   string(key),
+				Value: value,
+			})
+		}
+		return
+	})
+
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return r, nil
+}
+
+func (d *Datastore) Keys() ([]string, error) {
+	r := make([]string, 0)
+	err := d.db.View(func(txn *badger.Txn) error {
+		options := badger.DefaultIteratorOptions
+		itr := txn.NewIterator(options)
+		defer itr.Close()
+
+		for itr.Rewind(); itr.Valid(); itr.Next() {
+			item := itr.Item()
+			key := item.Key()
+			r = append(r, string(key))
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
 }
 
 func (d *Datastore) GetBatch(keys []string) ([]map[string]any, error) {
