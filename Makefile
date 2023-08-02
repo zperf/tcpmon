@@ -1,11 +1,3 @@
-ifeq (, $(shell which protoc-gen-go))
-$(error "protoc-gen-go not found in $$PATH, consider run `make install-deps` to install, then adds $$GOPATH/bin to your $$PATH")
-endif
-
-ifeq (, $(shell which golangci-lint))
-$(error "golangci-lint not found in $$PATH, consider run `make install-deps` to install, then adds $$GOPATH/bin to your $$PATH")
-endif
-
 all: build
 
 .PHONY: build
@@ -18,10 +10,16 @@ release: proto
 
 .PHONY: proto
 proto:
+ifeq (, $(shell which protoc-gen-go))
+	$(MAKE) install-deps
+endif
 	protoc --go_out=. --go_opt=Mproto/tcpmon.proto=./tcpmon proto/tcpmon.proto
 
 .PHONY: check
 check: build
+ifeq (, $(shell which golangci-lint))
+	$(MAKE) install-deps
+endif
 	golangci-lint run
 	go test -race -v ./...
 
