@@ -26,14 +26,14 @@ func New() (*Monitor, error) {
 	}
 
 	return &Monitor{
-		sockMon:   &SocketMonitor{},
-		ifaceMon:  &NicMonitor{},
+		sockMon:    &SocketMonitor{},
+		ifaceMon:   &NicMonitor{},
 		netstatMon: &NetstatMonitor{},
-		datastore: NewDatastore(epoch, 120),
+		datastore:  NewDatastore(epoch, 120),
 	}, nil
 }
 
-func (mon *Monitor) Collect(now time.Time, tx chan<- *StoreRequest) {
+func (mon *Monitor) Collect(now time.Time, tx chan<- *KVPair) {
 	var wg sync.WaitGroup
 	wg.Add(3)
 

@@ -10,7 +10,7 @@ import (
 
 type NetstatMonitor struct{}
 
-func (m *NetstatMonitor) Collect(now time.Time) (*StoreRequest, error) {
+func (m *NetstatMonitor) Collect(now time.Time) (*KVPair, error) {
 	r, _, err := RunNetstat(now)
 	if err != nil {
 		return nil, err
@@ -21,7 +21,7 @@ func (m *NetstatMonitor) Collect(now time.Time) (*StoreRequest, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	return &StoreRequest{
+	return &KVPair{
 		Key:   fmt.Sprintf("%s/%v/", PrefixNetRecord, now.UnixMilli()),
 		Value: val,
 	}, nil
