@@ -2,7 +2,9 @@ package tcpmon
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -12,6 +14,7 @@ import (
 const PrefixTcpRecord = "tcp"
 const PrefixNicRecord = "nic"
 const PrefixNetRecord = "net"
+const PrefixSignalRecord = "sig"
 
 func ValidPrefix(s string) bool {
 	return s == PrefixNicRecord || s == PrefixTcpRecord || s == PrefixNetRecord
@@ -25,9 +28,14 @@ func GetType(key string) string {
 	return key[:p]
 }
 
+func NewKey(kind string) string {
+	return fmt.Sprintf("%s/%v/", kind, time.Now().UnixMilli())
+}
+
 type KVPair struct {
-	Key   string
-	Value []byte
+	Key      string
+	Value    []byte
+	Callback func(err error)
 }
 
 func (p KVPair) ToProto() (proto.Message, error) {

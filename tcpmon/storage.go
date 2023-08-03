@@ -9,27 +9,17 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	boptions "github.com/dgraph-io/badger/v4/options"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
-	"github.com/ugurcsen/gods-generic/queues"
-	"github.com/ugurcsen/gods-generic/queues/circularbuffer"
-	"google.golang.org/protobuf/proto"
 )
 
 type Datastore struct {
 	tx   chan *KVPair
 	done chan struct{}
 	db   *badger.DB
-
-	// peek window
-	windowMu   sync.RWMutex
-	windowSize int
-	window     queues.Queue[string]
-
 	wait sync.WaitGroup
 }
 
-func NewDatastore(epoch uint64, windowSize int) *Datastore {
-	options := badger.DefaultOptions(viper.GetString("db")).
+func NewDatastore(initialEpoch uint64, path string) *Datastore {
+	options := badger.DefaultOptions(path).
 		// TODO(fanyang) log with zerolog
 		WithLoggingLevel(badger.WARNING).
 		WithInMemory(false).
@@ -41,18 +31,17 @@ func NewDatastore(epoch uint64, windowSize int) *Datastore {
 		log.Fatal().Err(errors.WithStack(err)).Msg("failed open database")
 	}
 
-	log.Info().Uint64("epoch", epoch).Msg("datastore created")
+	log.Info().Uint64("initialEpoch", initialEpoch).Msg("datastore created")
 	tx := make(chan *KVPair, 256)
 
 	d := &Datastore{
-		done:       make(chan struct{}),
-		tx:         tx,
-		db:         db,
-		windowSize: windowSize,
-		window:     circularbuffer.New[string](windowSize),
+		done: make(chan struct{}),
+		tx:   tx,
+		db:   db,
 	}
 	d.wait.Add(1)
-	go d.writer(epoch, d.window)
+
+	go d.writer(initialEpoch)
 	return d
 }
 
@@ -61,135 +50,13 @@ func (d *Datastore) Tx() chan<- *KVPair {
 	return d.tx
 }
 
+// Close the datastore and shutdown
 func (d *Datastore) Close() {
 	close(d.done)
 	d.wait.Wait()
 }
 
-func (d *Datastore) LastKeys(batch int) []string {
-	if batch > d.windowSize {
-		log.Fatal().Err(errors.New("invalid batch size")).Int("batch", batch).
-			Msg("please increase the window while creating datastore")
-	}
-	d.windowMu.RLock()
-	defer d.windowMu.RUnlock()
-
-	if d.window.Size() > batch {
-		size := d.window.Size()
-		return d.window.Values()[size-batch : size]
-	}
-	return d.window.Values()
-}
-
-// GetPrefix returns all
-func (d *Datastore) GetPrefix(prefix []byte, maxCount int, hasValue bool) ([]KVPair, error) {
-	r := make([]KVPair, 0)
-
-	err := d.db.View(func(txn *badger.Txn) (err error) {
-		err = nil
-		options := badger.DefaultIteratorOptions
-		options.Reverse = true
-		options.Prefix = prefix
-		itr := txn.NewIterator(options)
-		defer itr.Close()
-
-		count := 0
-		// append 0xff is a trick for reverse iteration
-		// see more: https://github.com/dgraph-io/badger/issues/436#issuecomment-400095559
-		for itr.Seek(append(prefix, 0xff)); itr.Valid() && count < maxCount; itr.Next() {
-			count++
-			item := itr.Item()
-			key := item.Key()
-			var value []byte
-			if hasValue {
-				value, err = item.ValueCopy(nil)
-				if err != nil {
-					return errors.WithStack(err)
-				}
-			} else {
-				value = nil
-			}
-			r = append(r, KVPair{
-				Key:   string(key),
-				Value: value,
-			})
-		}
-		return
-	})
-
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	return r, nil
-}
-
-func (d *Datastore) Keys() ([]string, error) {
-	r := make([]string, 0)
-	err := d.db.View(func(txn *badger.Txn) error {
-		options := badger.DefaultIteratorOptions
-		itr := txn.NewIterator(options)
-		defer itr.Close()
-
-		for itr.Rewind(); itr.Valid(); itr.Next() {
-			item := itr.Item()
-			key := item.Key()
-			r = append(r, string(key))
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return r, nil
-}
-
-func (d *Datastore) GetBatch(keys []string) ([]map[string]any, error) {
-	rawValues := make([][]byte, len(keys))
-	err := d.db.View(func(txn *badger.Txn) error {
-		for i, key := range keys {
-			itr, err := txn.Get([]byte(key))
-			if err != nil {
-				rawValues[i] = []byte(ErrorStr(err))
-			} else {
-				rawValues[i], err = itr.ValueCopy(nil)
-				if err != nil {
-					rawValues[i] = []byte(ErrorStr(err))
-				}
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	values := make([]map[string]any, len(keys))
-	for i, buf := range rawValues {
-		key := keys[i]
-		if strings.HasPrefix(key, PrefixTcpRecord) {
-			var metric TcpMetric
-			err := proto.Unmarshal(buf, &metric)
-			if err != nil {
-				values[i] = ErrorJSON(err)
-				break
-			}
-			values[i] = ToProtojson(&metric)
-		} else if strings.HasPrefix(key, PrefixNicRecord) {
-			var metric NicMetric
-			err := proto.Unmarshal(buf, &metric)
-			if err != nil {
-				values[i] = ErrorJSON(err)
-				break
-			}
-			values[i] = ToProtojson(&metric)
-		} else {
-			log.Fatal().Str("key", key).Msg("unknown key prefix")
-		}
-	}
-	return values, nil
-}
-
-func (d *Datastore) writer(initialEpoch uint64, window queues.Queue[string]) {
+func (d *Datastore) writer(initialEpoch uint64) {
 	log.Info().Msg("datastore writer started")
 	defer func(wait *sync.WaitGroup) {
 		wait.Done()
@@ -206,7 +73,7 @@ func (d *Datastore) writer(initialEpoch uint64, window queues.Queue[string]) {
 			return
 		}
 
-		if len(req.Key) <= 0 || len(req.Value) <= 0 {
+		if len(req.Key) <= 0 {
 			log.Warn().Str("Key", req.Key).Int("ValueLen", len(req.Value)).
 				Msg("ignore invalid KVPair")
 			continue
@@ -216,21 +83,18 @@ func (d *Datastore) writer(initialEpoch uint64, window queues.Queue[string]) {
 		req.Key = key
 		epoch++
 
-		// TODO(fanyang) batch write txn
-		err := d.db.Update(func(txn *badger.Txn) error {
-			return txn.Set([]byte(req.Key), req.Value)
-		})
-		log.Trace().Str("key", req.Key).Int("valueLen", len(req.Value)).Msg("write new item")
-
-		if err != nil {
-			log.Warn().Err(err).Msg("failed to insert db")
+		var err error
+		if !strings.HasPrefix(key, PrefixSignalRecord) {
+			// TODO(fanyang) batch write txn
+			err = d.db.Update(func(txn *badger.Txn) error {
+				return txn.Set([]byte(req.Key), req.Value)
+			})
+			if err != nil {
+				log.Warn().Err(err).Msg("failed to insert db")
+			}
 		}
-
-		d.windowMu.Lock()
-		if window.Size() >= d.windowSize {
-			window.Dequeue()
+		if req.Callback != nil {
+			req.Callback(err)
 		}
-		window.Enqueue(key)
-		d.windowMu.Unlock()
 	}
 }
