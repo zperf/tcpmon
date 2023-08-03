@@ -1,0 +1,10 @@
+command-timeout: 1s
+db: /var/lib/tcpmon/db
+foreground: false
+ifconfig: /usr/bin/ifconfig
+interval: 1s
+listen: 0.0.0.0:6789
+netstat: /usr/bin/netstat
+netstat-arg: -s
+ss: /usr/bin/ss
+ss-arg: -4ntipmoHOna

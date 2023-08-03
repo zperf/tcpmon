@@ -27,3 +27,14 @@ endif
 install-deps:
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.53.3
+
+.PHONY: package
+package: release rpm
+
+.PHONY: rpm
+rpm:
+	$(MAKE) -C rpm
+
+.PHONY: clean
+clean:
+	find rpm -name "tcpmon*rpm" -type f -exec rm -f {} \;
