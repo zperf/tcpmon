@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -62,8 +63,11 @@ func Execute() {
 	if err != nil {
 		var expected viper.ConfigFileNotFoundError
 		if errors.As(err, &expected) {
-			log.Warn().Err(err).Msg("config file not found")
-			// TODO(fanyang) create default config file
+			log.Warn().Err(err).Msg("config file not found, creating default config file")
+			err = writeDefaultConfig()
+			if err != nil {
+				log.Warn().Err(err).Msg("create default config file failed")
+			}
 		} else {
 			log.Fatal().Err(err).Msg("failed to read config file")
 		}
@@ -73,6 +77,21 @@ func Execute() {
 	if err != nil {
 		os.Exit(1)
 	}
+}
+
+func writeDefaultConfig() error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	parentDir := filepath.Join(home, ".tcpmon")
+	err = os.MkdirAll(parentDir, 0755)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return errors.WithStack(viper.SafeWriteConfigAs(filepath.Join(parentDir, "config.yaml")))
 }
 
 func initViper() {
