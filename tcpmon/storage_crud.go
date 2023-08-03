@@ -1,6 +1,7 @@
 package tcpmon
 
 import (
+	"io"
 	"math"
 
 	"github.com/cockroachdb/errors"
@@ -76,4 +77,8 @@ func (d *Datastore) GetKeys() ([]string, error) {
 		return nil, err
 	}
 	return keys, nil
+}
+
+func (d *Datastore) Backup(w io.Writer, since uint64) (uint64, error) {
+	return d.db.Backup(w, since)
 }
