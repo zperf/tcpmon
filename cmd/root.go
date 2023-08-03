@@ -58,6 +58,18 @@ func Execute() {
 		"Interval between two metric collections")
 	fatalIf(viper.BindPFlag("interval", rootCmd.PersistentFlags().Lookup("interval")))
 
+	// size
+	rootCmd.PersistentFlags().Int("max-size", 10000, "badger db max size")
+	fatalIf(viper.BindPFlag("max-size", rootCmd.PersistentFlags().Lookup("max-size")))
+	rootCmd.PersistentFlags().Int("delete-size", 100, "badger db delete size for once")
+	fatalIf(viper.BindPFlag("delete-size", rootCmd.PersistentFlags().Lookup("delete-size")))
+
+	// period
+	rootCmd.PersistentFlags().Int("period-second", 1, "period of badger db delete")
+	fatalIf(viper.BindPFlag("period-second", rootCmd.PersistentFlags().Lookup("period-second")))
+	rootCmd.PersistentFlags().Int("period-minute", 5, "period of badger db GC")
+	fatalIf(viper.BindPFlag("period-minute", rootCmd.PersistentFlags().Lookup("period-minute")))
+
 	err := viper.ReadInConfig()
 	if err != nil {
 		var expected viper.ConfigFileNotFoundError

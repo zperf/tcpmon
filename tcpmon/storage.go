@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/cockroachdb/errors"
@@ -32,13 +31,24 @@ type Datastore struct {
 	window     queues.Queue[string]
 
 	wait sync.WaitGroup
-	stop int32
+
+	tickerDelete *time.Ticker
+	tickerGC     *time.Ticker
 }
 
 type KVPair struct {
 	Key   string
 	Value []byte
 }
+
+type periodOption struct {
+	maxSize      int
+	deleteSize   int
+	periodSecond int
+	periodMinute int
+}
+
+var periodOptions *periodOption
 
 func NewDatastore(epoch uint64, windowSize int) *Datastore {
 	options := badger.DefaultOptions(viper.GetString("db")).
@@ -62,11 +72,24 @@ func NewDatastore(epoch uint64, windowSize int) *Datastore {
 		db:         db,
 		windowSize: windowSize,
 		window:     circularbuffer.New[string](windowSize),
-		stop:       0,
 	}
-	d.wait.Add(1)
+	d.wait.Add(3)
+
+	if periodOptions == nil {
+		periodOptions = &periodOption{
+			maxSize:      viper.GetInt("max-size"),
+			deleteSize:   viper.GetInt("delete-size"),
+			periodSecond: viper.GetInt("period-second"),
+			periodMinute: viper.GetInt("period-minute"),
+		}
+	}
+
+	d.tickerDelete = time.NewTicker(time.Duration(periodOptions.periodSecond) * time.Second)
+	d.tickerGC = time.NewTicker(time.Duration(periodOptions.periodMinute) * time.Minute)
+
 	go d.writer(epoch, d.window)
-	go d.periodicDelete(10000, 100)
+	go d.periodicDelete(periodOptions.maxSize, periodOptions.deleteSize)
+	go d.periodicGC()
 	return d
 }
 
@@ -77,7 +100,6 @@ func (d *Datastore) Tx() chan<- *KVPair {
 
 func (d *Datastore) Close() {
 	close(d.done)
-	atomic.StoreInt32(&d.stop, 1)
 	d.wait.Wait()
 }
 
@@ -188,28 +210,19 @@ func (d *Datastore) writer(initialEpoch uint64, window queues.Queue[string]) {
 	}
 }
 
-func (d *Datastore) getSize() int {
-	txn := d.db.NewTransaction(false)
-	defer txn.Discard()
+func (d *Datastore) checkDeletePrefix(prefix string, maxSize, deleteSize int) {
+	d.db.Update(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.Prefix = []byte(prefix)
+		it := txn.NewIterator(opts)
+		defer it.Close()
 
-	opts := badger.DefaultIteratorOptions
-	it := txn.NewIterator(opts)
-	defer it.Close()
+		totalCount := 0
+		for it.Rewind(); it.Valid(); it.Next() {
+			totalCount++
+		}
 
-	totalCount := 0
-	for it.Rewind(); it.Valid(); it.Next() {
-		totalCount++
-	}
-	return totalCount
-}
-
-func (d *Datastore) periodicDelete(maxSize, deleteSize int) {
-	for atomic.LoadInt32(&d.stop) == 0 {
-		totalCount := d.getSize()
 		if totalCount > maxSize {
-			txn := d.db.NewTransaction(true)
-			opts := badger.DefaultIteratorOptions
-			it := txn.NewIterator(opts)
 			k := 0
 			for it.Rewind(); it.Valid(); it.Next() {
 				if k >= deleteSize {
@@ -225,12 +238,48 @@ func (d *Datastore) periodicDelete(maxSize, deleteSize int) {
 				}
 				k++
 			}
-			it.Close()
-			err := txn.Commit()
-			if err != nil {
-				log.Warn().Err(err).Msg("failed to commit")
+		}
+		return nil
+	})
+}
+
+func (d *Datastore) periodicDelete(maxSize, deleteSize int) {
+	log.Info().Msg("datastore periodic delete started")
+	defer func(wait *sync.WaitGroup) {
+		wait.Done()
+		log.Info().Msg("datastore periodic delete exited")
+	}(&d.wait)
+
+	maxSize, deleteSize = maxSize/3, deleteSize/3
+	for {
+		select {
+		case <-d.done:
+			return
+		case <-d.tickerDelete.C:
+			d.checkDeletePrefix(PrefixNetRecord, maxSize, deleteSize)
+			d.checkDeletePrefix(PrefixNicRecord, maxSize, deleteSize)
+			d.checkDeletePrefix(PrefixTcpRecord, maxSize, deleteSize)
+		}
+	}
+}
+
+func (d *Datastore) periodicGC() {
+	log.Info().Msg("datastore periodic GC started")
+	defer func(wait *sync.WaitGroup) {
+		wait.Done()
+		log.Info().Msg("datastore periodic GC exited")
+	}(&d.wait)
+
+	for {
+		select {
+		case <-d.done:
+			return
+		case <-d.tickerGC.C:
+		again:
+			err := d.db.RunValueLogGC(0.5)
+			if err == nil {
+				goto again
 			}
 		}
-		time.Sleep(1 * time.Second)
 	}
 }
