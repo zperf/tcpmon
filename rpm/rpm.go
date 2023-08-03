@@ -23,20 +23,13 @@ func ReadFileString(name string) string {
 	return strings.TrimSpace(string(ReadFile(name)))
 }
 
-func main() {
-	log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339Nano}).
-		Level(zerolog.InfoLevel).
-		With().
-		Timestamp().
-		Caller().
-		Logger()
-
+func BuildRPM(arch string) {
 	rpmMeta := rpmpack.RPMMetaData{
 		Name:       "tcpmon",
 		Version:    ReadFileString("VERSION"),
 		Release:    "1.el7",
 		OS:         "linux",
-		Arch:       "x86_64",
+		Arch:       arch,
 		Summary:    "Tcpmon - a portable netowrk monitor",
 		Licence:    "MIT",
 		Vendor:     "SMTX",
@@ -58,7 +51,7 @@ func main() {
 
 	rpm.AddFile(rpmpack.RPMFile{
 		Name: "/usr/bin/tcpmon",
-		Body: ReadFile("../bin/tcpmon"),
+		Body: ReadFile("../bin/tcpmon-" + arch),
 		Type: rpmpack.GenericFile,
 	})
 	rpm.AddFile(rpmpack.RPMFile{
@@ -87,4 +80,16 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("write to RPM failed")
 	}
+}
+
+func main() {
+	log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339Nano}).
+		Level(zerolog.InfoLevel).
+		With().
+		Timestamp().
+		Caller().
+		Logger()
+
+	BuildRPM("x86_64")
+	BuildRPM("aarch64")
 }

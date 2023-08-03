@@ -6,7 +6,8 @@ build: proto
 
 .PHONY: release
 release: proto
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -gcflags "all=-N -l" -o bin/tcpmon github.com/zperf/tcpmon
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -gcflags "all=-N -l" -o bin/tcpmon-x86_64 github.com/zperf/tcpmon
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -gcflags "all=-N -l" -o bin/tcpmon-aarch64 github.com/zperf/tcpmon
 
 .PHONY: proto
 proto:
