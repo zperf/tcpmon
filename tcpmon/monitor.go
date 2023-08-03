@@ -25,11 +25,13 @@ func New() (*Monitor, error) {
 		return nil, errors.Wrap(err, "failed to generate initial epoch")
 	}
 
+	path := viper.GetString("db")
+
 	return &Monitor{
 		sockMon:    &SocketMonitor{},
 		ifaceMon:   &NicMonitor{},
 		netstatMon: &NetstatMonitor{},
-		datastore:  NewDatastore(epoch, 120),
+		datastore:  NewDatastore(epoch, path),
 	}, nil
 }
 
