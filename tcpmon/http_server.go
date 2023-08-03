@@ -1,7 +1,9 @@
 package tcpmon
 
 import (
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
@@ -13,6 +15,22 @@ func InitRoutes(router *gin.Engine, mon *Monitor) {
 	ds := mon.datastore
 	router.GET("/metrics", GetMetrics(ds))
 	router.GET("/metrics/:type", GetMetrics(ds))
+	router.GET("/backup", GetBackup(ds))
+}
+
+func GetBackup(ds *Datastore) func(c *gin.Context) {
+	hostname := Hostname()
+	filename := SafeFilename(fmt.Sprintf("tcpmon-dump-%s-%s.bak", hostname, time.Now().Format(time.DateOnly)))
+
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Content-Type", "application/octet-stream")
+		c.Writer.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+		_, err := ds.Backup(c.Writer, 0)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, ErrorJSON(err))
+			return
+		}
+	}
 }
 
 func GetMetrics(ds *Datastore) func(c *gin.Context) {

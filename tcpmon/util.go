@@ -5,9 +5,12 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -74,4 +77,19 @@ func FilterStringsByPrefix(s []string, prefix string) []string {
 		}
 	}
 	return r
+}
+
+func Hostname() string {
+	name, err := os.Hostname()
+	if err != nil {
+		log.Warn().Err(err).Msg("Get hostname failed")
+		return ""
+	}
+	return name
+}
+
+var reFilenameFilter = regexp.MustCompile(`[\\/:*?"<>|]`)
+
+func SafeFilename(filename string) string {
+	return reFilenameFilter.ReplaceAllString(filename, "_")
 }
