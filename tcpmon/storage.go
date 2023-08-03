@@ -58,10 +58,14 @@ func (d *Datastore) Close() {
 
 func (d *Datastore) writer(initialEpoch uint64) {
 	log.Info().Msg("datastore writer started")
-	defer func(wait *sync.WaitGroup) {
+	defer func(wait *sync.WaitGroup, db *badger.DB) {
+		err := db.Close()
+		if err != nil {
+			log.Warn().Err(err).Msg("close db failed")
+		}
 		wait.Done()
 		log.Info().Msg("datastore writer exited")
-	}(&d.wait)
+	}(&d.wait, d.db)
 
 	epoch := initialEpoch
 	for {
