@@ -22,14 +22,14 @@ type netstatOption struct {
 var netstatOptions *netstatOption
 
 var headSet = map[string]struct{}{
-	"Ip:":      struct{}{},
-	"Icmp:":    struct{}{},
-	"IcmpMsg:": struct{}{},
-	"Tcp:":     struct{}{},
-	"Udp:":     struct{}{},
-	"UdpLite:": struct{}{},
-	"TcpExt:":  struct{}{},
-	"IpExt:":   struct{}{},
+	"Ip:":      {},
+	"Icmp:":    {},
+	"IcmpMsg:": {},
+	"Tcp:":     {},
+	"Udp:":     {},
+	"UdpLite:": {},
+	"TcpExt:":  {},
+	"IpExt:":   {},
 }
 
 var splitFunc = func(c rune) bool {
@@ -112,14 +112,14 @@ func RunNetstat(now time.Time) (*NetstatMetric, string, error) {
 		}
 	}
 
-	cmd := cmd.NewCmd(netstatOptions.Path, netstatOptions.Arg)
+	c := cmd.NewCmd(netstatOptions.Path, netstatOptions.Arg)
 	ctx, cancel := context.WithTimeout(context.Background(), netstatOptions.Timeout)
 	defer cancel()
 
 	select {
 	case <-ctx.Done():
 		return nil, "", errors.Wrap(ctx.Err(), "netstat timeout")
-	case st := <-cmd.Start():
+	case st := <-c.Start():
 		var r NetstatMetric
 		r.Type = MetricType_NET
 		r.Timestamp = timestamppb.New(now)
