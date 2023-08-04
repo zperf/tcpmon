@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/dgraph-io/badger/v4"
@@ -12,13 +13,22 @@ import (
 )
 
 type Datastore struct {
-	tx   chan *KVPair
-	done chan struct{}
-	db   *badger.DB
-	wait sync.WaitGroup
+	tx            chan *KVPair
+	done          chan struct{}
+	db            *badger.DB
+	wait          sync.WaitGroup
+	tickerReclaim *time.Ticker
+	tickerGC      *time.Ticker
 }
 
-func NewDatastore(initialEpoch uint64, path string) *Datastore {
+type PeriodOption struct {
+	MaxSize       int
+	DeleteSize    int
+	ReclaimPeriod time.Duration
+	GCPeriod      time.Duration
+}
+
+func NewDatastore(initialEpoch uint64, path string, periodOptions *PeriodOption) *Datastore {
 	options := badger.DefaultOptions(path).
 		// TODO(fanyang) log with zerolog
 		WithLoggingLevel(badger.WARNING).
@@ -35,13 +45,17 @@ func NewDatastore(initialEpoch uint64, path string) *Datastore {
 	tx := make(chan *KVPair, 256)
 
 	d := &Datastore{
-		done: make(chan struct{}),
-		tx:   tx,
-		db:   db,
+		done:          make(chan struct{}),
+		tx:            tx,
+		db:            db,
+		tickerReclaim: time.NewTicker(periodOptions.ReclaimPeriod),
+		tickerGC:      time.NewTicker(periodOptions.GCPeriod),
 	}
-	d.wait.Add(1)
+	d.wait.Add(3)
 
 	go d.writer(initialEpoch)
+	go d.periodicReclaim(periodOptions.MaxSize, periodOptions.DeleteSize)
+	go d.periodicGC()
 	return d
 }
 
@@ -99,6 +113,97 @@ func (d *Datastore) writer(initialEpoch uint64) {
 		}
 		if req.Callback != nil {
 			req.Callback(err)
+		}
+	}
+}
+
+func (d *Datastore) GetSize() int {
+	totalCount := 0
+	err := d.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		for it.Rewind(); it.Valid(); it.Next() {
+			totalCount++
+		}
+		return nil
+	})
+	if err != nil {
+		return -1
+	}
+	return totalCount
+}
+
+func (d *Datastore) checkDeletePrefix(prefix string, maxSize, deleteSize int) {
+	err := d.db.Update(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.Prefix = []byte(prefix)
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		totalCount := 0
+		for it.Rewind(); it.Valid(); it.Next() {
+			totalCount++
+		}
+
+		if totalCount > maxSize {
+			k := 0
+			for it.Rewind(); it.Valid(); it.Next() {
+				if k >= deleteSize {
+					break
+				}
+				item := it.Item()
+				key := item.KeyCopy(nil)
+				err := txn.Delete(key)
+				if err != nil {
+					log.Warn().Err(err).Str("key", string(key)).Msg("failed to delete item")
+				}
+				k++
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		log.Warn().Err(err).Msg("failed to update db")
+	}
+}
+
+func (d *Datastore) periodicReclaim(maxSize, deleteSize int) {
+	log.Info().Msg("datastore periodic delete started")
+	defer func(wait *sync.WaitGroup) {
+		wait.Done()
+		log.Info().Msg("datastore periodic delete exited")
+	}(&d.wait)
+
+	maxSize, deleteSize = maxSize/3, deleteSize/3
+	for {
+		select {
+		case <-d.done:
+			return
+		case <-d.tickerReclaim.C:
+			d.checkDeletePrefix(PrefixNetRecord, maxSize, deleteSize)
+			d.checkDeletePrefix(PrefixNicRecord, maxSize, deleteSize)
+			d.checkDeletePrefix(PrefixTcpRecord, maxSize, deleteSize)
+		}
+	}
+}
+
+func (d *Datastore) periodicGC() {
+	log.Info().Msg("datastore periodic GC started")
+	defer func(wait *sync.WaitGroup) {
+		wait.Done()
+		log.Info().Msg("datastore periodic GC exited")
+	}(&d.wait)
+
+	for {
+		select {
+		case <-d.done:
+			return
+		case <-d.tickerGC.C:
+			err := d.db.RunValueLogGC(0.5)
+			if err == nil {
+				continue
+			}
 		}
 	}
 }
