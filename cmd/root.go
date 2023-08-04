@@ -59,17 +59,16 @@ func Execute() {
 		"Interval between two metric collections")
 	fatalIf(viper.BindPFlag("interval", rootCmd.PersistentFlags().Lookup("interval")))
 
-	// size
+	// garbage collection and key reclaiming
 	rootCmd.PersistentFlags().Int("max-size", 10000, "badger db max size")
 	fatalIf(viper.BindPFlag("max-size", rootCmd.PersistentFlags().Lookup("max-size")))
 	rootCmd.PersistentFlags().Int("delete-size", 100, "badger db delete size for once")
 	fatalIf(viper.BindPFlag("delete-size", rootCmd.PersistentFlags().Lookup("delete-size")))
 
-	// period
 	rootCmd.PersistentFlags().Duration("reclaim-period", 1*time.Second, "period of badger db delete")
 	fatalIf(viper.BindPFlag("reclaim-period", rootCmd.PersistentFlags().Lookup("reclaim-period")))
-	rootCmd.PersistentFlags().Duration("GC-period", 5*time.Minute, "period of badger db GC")
-	fatalIf(viper.BindPFlag("GC-period", rootCmd.PersistentFlags().Lookup("GC-period")))
+	rootCmd.PersistentFlags().Duration("gc-period", 5*time.Minute, "period of badger db GC")
+	fatalIf(viper.BindPFlag("gc-period", rootCmd.PersistentFlags().Lookup("gc-period")))
 
 	err := viper.ReadInConfig()
 	if err != nil {
