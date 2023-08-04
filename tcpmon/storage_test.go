@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/suite"
 
 	. "github.com/zperf/tcpmon/tcpmon"
@@ -23,8 +24,8 @@ func TestStorage(t *testing.T) {
 		path: "/tmp/tcpmon-test",
 		periodOptions: &PeriodOption{
 			MaxSize:       10000,
-			DeleteSize:    10000,
-			ReclaimPeriod: 1 * time.Second,
+			DeleteSize:    100000,
+			ReclaimPeriod: 2 * time.Second,
 			GCPeriod:      5 * time.Minute,
 		},
 	}
@@ -114,13 +115,10 @@ func (s *StorageTestSuite) TestGetKeys() {
 }
 
 func (s *StorageTestSuite) TestPeriodicReclaim() {
-	assert := s.Assert()
-
 	ds := NewDatastore(0, s.path, s.periodOptions)
 	defer ds.Close()
 
 	tx := ds.Tx()
-
 	for i := 0; i < s.periodOptions.MaxSize; i++ {
 		tx <- &KVPair{
 			Key:   NewKey(PrefixNicRecord),
@@ -137,8 +135,16 @@ func (s *StorageTestSuite) TestPeriodicReclaim() {
 	}
 	s.writeBarrier(tx)
 
-	time.Sleep(5 * time.Second)
-	assert.GreaterOrEqual(s.periodOptions.MaxSize, ds.GetSize())
+	size := ds.GetSize()
+	log.Trace().Int("size", size).Msg("insert")
+
+	// wait for reclaim trigger
+	time.Sleep(s.periodOptions.ReclaimPeriod + time.Second)
+
+	size = ds.GetSize()
+	log.Info().Int("size", size).Msg("reclaim done")
+
+	s.Assert().GreaterOrEqual(s.periodOptions.MaxSize, size)
 }
 
 // writeBarrier waits for write complete
