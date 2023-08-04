@@ -30,7 +30,7 @@ func New() (*Monitor, error) {
 		MaxSize:       viper.GetInt("max-size"),
 		DeleteSize:    viper.GetInt("delete-size"),
 		ReclaimPeriod: viper.GetDuration("reclaim-period"),
-		GCPeriod:      viper.GetDuration("GC-period"),
+		GCPeriod:      viper.GetDuration("gc-period"),
 	}
 
 	return &Monitor{

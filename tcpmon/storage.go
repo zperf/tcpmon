@@ -118,49 +118,56 @@ func (d *Datastore) writer(initialEpoch uint64) {
 }
 
 func (d *Datastore) GetSize() int {
-	totalCount := 0
+	count := 0
 	err := d.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
 		it := txn.NewIterator(opts)
 		defer it.Close()
+
 		for it.Rewind(); it.Valid(); it.Next() {
-			totalCount++
+			count++
 		}
 		return nil
 	})
 	if err != nil {
-		return -1
+		log.Fatal().Err(errors.WithStack(err)).Msg("get size failed")
 	}
-	return totalCount
+
+	return count
 }
 
-func (d *Datastore) checkDeletePrefix(prefix string, maxSize, deleteSize int) {
+func (d *Datastore) checkDeletePrefix(prefix []byte, maxSize, deleteSize int) {
 	err := d.db.Update(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
-		opts.Prefix = []byte(prefix)
+		opts.Prefix = prefix
+		opts.PrefetchValues = false
+
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
-		totalCount := 0
-		for it.Rewind(); it.Valid(); it.Next() {
-			totalCount++
+		count := 0
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			count++
 		}
 
-		if totalCount > maxSize {
-			k := 0
-			for it.Rewind(); it.Valid(); it.Next() {
-				if k >= deleteSize {
+		if count > maxSize {
+			deleted := 0
+			for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+				if deleted >= deleteSize || deleted >= count-maxSize {
 					break
 				}
+
 				item := it.Item()
 				key := item.KeyCopy(nil)
 				err := txn.Delete(key)
 				if err != nil {
 					log.Warn().Err(err).Str("key", string(key)).Msg("failed to delete item")
 				}
-				k++
+				deleted++
 			}
 		}
+
 		return nil
 	})
 	if err != nil {
@@ -181,9 +188,9 @@ func (d *Datastore) periodicReclaim(maxSize, deleteSize int) {
 		case <-d.done:
 			return
 		case <-d.tickerReclaim.C:
-			d.checkDeletePrefix(PrefixNetRecord, maxSize, deleteSize)
-			d.checkDeletePrefix(PrefixNicRecord, maxSize, deleteSize)
-			d.checkDeletePrefix(PrefixTcpRecord, maxSize, deleteSize)
+			d.checkDeletePrefix([]byte(PrefixNetRecord), maxSize, deleteSize)
+			d.checkDeletePrefix([]byte(PrefixNicRecord), maxSize, deleteSize)
+			d.checkDeletePrefix([]byte(PrefixTcpRecord), maxSize, deleteSize)
 		}
 	}
 }
@@ -200,10 +207,7 @@ func (d *Datastore) periodicGC() {
 		case <-d.done:
 			return
 		case <-d.tickerGC.C:
-			err := d.db.RunValueLogGC(0.5)
-			if err == nil {
-				continue
-			}
+			_ = d.db.RunValueLogGC(0.5)
 		}
 	}
 }
