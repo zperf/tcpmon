@@ -1,4 +1,5 @@
 bin/
+rpm/*.rpm
 
 # Created by https://www.toptal.com/developers/gitignore/api/windows,macos,linux,visualstudiocode,vim,go,emacs,goland+all
 # Edit at https://www.toptal.com/developers/gitignore?templates=windows,macos,linux,visualstudiocode,vim,go,emacs,goland+all

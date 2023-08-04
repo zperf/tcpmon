@@ -6,7 +6,8 @@ build: proto
 
 .PHONY: release
 release: proto
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -gcflags "all=-N -l" -o bin/tcpmon github.com/zperf/tcpmon
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -gcflags "all=-N -l" -o bin/tcpmon-x86_64 github.com/zperf/tcpmon
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -gcflags "all=-N -l" -o bin/tcpmon-aarch64 github.com/zperf/tcpmon
 
 .PHONY: proto
 proto:
@@ -27,3 +28,14 @@ endif
 install-deps:
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.53.3
+
+.PHONY: package
+package: release rpm
+
+.PHONY: rpm
+rpm:
+	$(MAKE) -C rpm
+
+.PHONY: clean
+clean:
+	find rpm -name "tcpmon*rpm" -type f -exec rm -f {} \;
