@@ -118,20 +118,23 @@ func (d *Datastore) writer(initialEpoch uint64) {
 }
 
 func (d *Datastore) GetSize() int {
-	totalCount := 0
+	count := 0
 	err := d.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
 		it := txn.NewIterator(opts)
 		defer it.Close()
+
 		for it.Rewind(); it.Valid(); it.Next() {
-			totalCount++
+			count++
 		}
 		return nil
 	})
 	if err != nil {
-		return -1
+		log.Fatal().Err(errors.WithStack(err)).Msg("get size failed")
 	}
-	return totalCount
+
+	return count
 }
 
 func (d *Datastore) checkDeletePrefix(prefix string, maxSize, deleteSize int) {
