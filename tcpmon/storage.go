@@ -203,10 +203,7 @@ func (d *Datastore) periodicGC() {
 		case <-d.done:
 			return
 		case <-d.tickerGC.C:
-			err := d.db.RunValueLogGC(0.5)
-			if err == nil {
-				continue
-			}
+			_ = d.db.RunValueLogGC(0.5)
 		}
 	}
 }
