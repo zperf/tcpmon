@@ -147,13 +147,13 @@ func (d *Datastore) checkDeletePrefix(prefix []byte, maxSize, deleteSize int) {
 		defer it.Close()
 
 		count := 0
-		for it.Seek(prefix); it.Valid(); it.Next() {
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			count++
 		}
 
 		if count > maxSize {
 			deleted := 0
-			for it.Seek(prefix); it.Valid(); it.Next() {
+			for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 				if deleted >= deleteSize || deleted >= count-maxSize {
 					break
 				}
