@@ -66,10 +66,10 @@ func Execute() {
 	fatalIf(viper.BindPFlag("delete-size", rootCmd.PersistentFlags().Lookup("delete-size")))
 
 	// period
-	rootCmd.PersistentFlags().Duration("period-second", 1*time.Second, "period of badger db delete")
-	fatalIf(viper.BindPFlag("period-second", rootCmd.PersistentFlags().Lookup("period-second")))
-	rootCmd.PersistentFlags().Duration("period-minute", 5*time.Minute, "period of badger db GC")
-	fatalIf(viper.BindPFlag("period-minute", rootCmd.PersistentFlags().Lookup("period-minute")))
+	rootCmd.PersistentFlags().Duration("reclaim-period", 1*time.Second, "period of badger db delete")
+	fatalIf(viper.BindPFlag("reclaim-period", rootCmd.PersistentFlags().Lookup("reclaim-period")))
+	rootCmd.PersistentFlags().Duration("GC-period", 5*time.Minute, "period of badger db GC")
+	fatalIf(viper.BindPFlag("GC-period", rootCmd.PersistentFlags().Lookup("GC-period")))
 
 	err := viper.ReadInConfig()
 	if err != nil {

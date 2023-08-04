@@ -13,19 +13,19 @@ import (
 )
 
 type Datastore struct {
-	tx           chan *KVPair
-	done         chan struct{}
-	db           *badger.DB
-	wait         sync.WaitGroup
-	tickerDelete *time.Ticker
-	tickerGC     *time.Ticker
+	tx            chan *KVPair
+	done          chan struct{}
+	db            *badger.DB
+	wait          sync.WaitGroup
+	tickerReclaim *time.Ticker
+	tickerGC      *time.Ticker
 }
 
 type PeriodOption struct {
-	MaxSize      int
-	DeleteSize   int
-	PeriodSecond time.Duration
-	PeriodMinute time.Duration
+	MaxSize       int
+	DeleteSize    int
+	ReclaimPeriod time.Duration
+	GCPeriod      time.Duration
 }
 
 func NewDatastore(initialEpoch uint64, path string, periodOptions *PeriodOption) *Datastore {
@@ -45,16 +45,16 @@ func NewDatastore(initialEpoch uint64, path string, periodOptions *PeriodOption)
 	tx := make(chan *KVPair, 256)
 
 	d := &Datastore{
-		done:         make(chan struct{}),
-		tx:           tx,
-		db:           db,
-		tickerDelete: time.NewTicker(periodOptions.PeriodSecond),
-		tickerGC:     time.NewTicker(periodOptions.PeriodMinute),
+		done:          make(chan struct{}),
+		tx:            tx,
+		db:            db,
+		tickerReclaim: time.NewTicker(periodOptions.ReclaimPeriod),
+		tickerGC:      time.NewTicker(periodOptions.GCPeriod),
 	}
 	d.wait.Add(3)
 
 	go d.writer(initialEpoch)
-	go d.periodicDelete(periodOptions.MaxSize, periodOptions.DeleteSize)
+	go d.periodicReclaim(periodOptions.MaxSize, periodOptions.DeleteSize)
 	go d.periodicGC()
 	return d
 }
@@ -67,8 +67,6 @@ func (d *Datastore) Tx() chan<- *KVPair {
 // Close the datastore and shutdown
 func (d *Datastore) Close() {
 	close(d.done)
-	d.tickerDelete.Stop()
-	d.tickerGC.Stop()
 	d.wait.Wait()
 }
 
@@ -119,6 +117,23 @@ func (d *Datastore) writer(initialEpoch uint64) {
 	}
 }
 
+func (d *Datastore) GetSize() int {
+	totalCount := 0
+	err := d.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		for it.Rewind(); it.Valid(); it.Next() {
+			totalCount++
+		}
+		return nil
+	})
+	if err != nil {
+		return -1
+	}
+	return totalCount
+}
+
 func (d *Datastore) checkDeletePrefix(prefix string, maxSize, deleteSize int) {
 	err := d.db.Update(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
@@ -138,12 +153,10 @@ func (d *Datastore) checkDeletePrefix(prefix string, maxSize, deleteSize int) {
 					break
 				}
 				item := it.Item()
-				key := item.Key()
+				key := item.KeyCopy(nil)
 				err := txn.Delete(key)
 				if err != nil {
 					log.Warn().Err(err).Str("key", string(key)).Msg("failed to delete item")
-				} else {
-					log.Trace().Str("key", string(key)).Msg("delete old item")
 				}
 				k++
 			}
@@ -155,7 +168,7 @@ func (d *Datastore) checkDeletePrefix(prefix string, maxSize, deleteSize int) {
 	}
 }
 
-func (d *Datastore) periodicDelete(maxSize, deleteSize int) {
+func (d *Datastore) periodicReclaim(maxSize, deleteSize int) {
 	log.Info().Msg("datastore periodic delete started")
 	defer func(wait *sync.WaitGroup) {
 		wait.Done()
@@ -167,7 +180,7 @@ func (d *Datastore) periodicDelete(maxSize, deleteSize int) {
 		select {
 		case <-d.done:
 			return
-		case <-d.tickerDelete.C:
+		case <-d.tickerReclaim.C:
 			d.checkDeletePrefix(PrefixNetRecord, maxSize, deleteSize)
 			d.checkDeletePrefix(PrefixNicRecord, maxSize, deleteSize)
 			d.checkDeletePrefix(PrefixTcpRecord, maxSize, deleteSize)
@@ -187,10 +200,9 @@ func (d *Datastore) periodicGC() {
 		case <-d.done:
 			return
 		case <-d.tickerGC.C:
-		again:
 			err := d.db.RunValueLogGC(0.5)
 			if err == nil {
-				goto again
+				continue
 			}
 		}
 	}

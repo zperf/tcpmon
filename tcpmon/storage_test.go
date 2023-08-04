@@ -22,10 +22,10 @@ func TestStorage(t *testing.T) {
 	s := &StorageTestSuite{
 		path: "/tmp/tcpmon-test",
 		periodOptions: &PeriodOption{
-			MaxSize:      10000,
-			DeleteSize:   100,
-			PeriodSecond: 1 * time.Second,
-			PeriodMinute: 5 * time.Minute,
+			MaxSize:       10000,
+			DeleteSize:    10000,
+			ReclaimPeriod: 1 * time.Second,
+			GCPeriod:      5 * time.Minute,
 		},
 	}
 	suite.Run(t, s)
@@ -111,6 +111,34 @@ func (s *StorageTestSuite) TestGetKeys() {
 	keys, err := ds.GetKeys()
 	assert.NoError(err)
 	assert.Equal(3, len(keys))
+}
+
+func (s *StorageTestSuite) TestPeriodicReclaim() {
+	assert := s.Assert()
+
+	ds := NewDatastore(0, s.path, s.periodOptions)
+	defer ds.Close()
+
+	tx := ds.Tx()
+
+	for i := 0; i < s.periodOptions.MaxSize; i++ {
+		tx <- &KVPair{
+			Key:   NewKey(PrefixNicRecord),
+			Value: nil,
+		}
+		tx <- &KVPair{
+			Key:   NewKey(PrefixNetRecord),
+			Value: nil,
+		}
+		tx <- &KVPair{
+			Key:   NewKey(PrefixTcpRecord),
+			Value: nil,
+		}
+	}
+	s.writeBarrier(tx)
+
+	time.Sleep(5 * time.Second)
+	assert.GreaterOrEqual(s.periodOptions.MaxSize, ds.GetSize())
 }
 
 // writeBarrier waits for write complete
