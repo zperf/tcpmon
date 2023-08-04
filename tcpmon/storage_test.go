@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/suite"
 
@@ -13,12 +14,19 @@ import (
 
 type StorageTestSuite struct {
 	suite.Suite
-	path string
+	path          string
+	periodOptions *PeriodOption
 }
 
 func TestStorage(t *testing.T) {
 	s := &StorageTestSuite{
 		path: "/tmp/tcpmon-test",
+		periodOptions: &PeriodOption{
+			MaxSize:      10000,
+			DeleteSize:   100,
+			PeriodSecond: 1 * time.Second,
+			PeriodMinute: 5 * time.Minute,
+		},
 	}
 	suite.Run(t, s)
 }
@@ -31,7 +39,7 @@ func (s *StorageTestSuite) SetupTest() {
 func (s *StorageTestSuite) TestGetPrefix() {
 	assert := s.Assert()
 
-	ds := NewDatastore(0, s.path)
+	ds := NewDatastore(0, s.path, s.periodOptions)
 	defer ds.Close()
 
 	tx := ds.Tx()
@@ -87,7 +95,7 @@ func (s *StorageTestSuite) TestGetPrefix() {
 func (s *StorageTestSuite) TestGetKeys() {
 	assert := s.Assert()
 
-	ds := NewDatastore(0, s.path)
+	ds := NewDatastore(0, s.path, s.periodOptions)
 	defer ds.Close()
 
 	tx := ds.Tx()

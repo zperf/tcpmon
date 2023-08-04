@@ -26,12 +26,18 @@ func New() (*Monitor, error) {
 	}
 
 	path := viper.GetString("db")
+	periodOptions := &PeriodOption{
+		MaxSize:      viper.GetInt("max-size"),
+		DeleteSize:   viper.GetInt("delete-size"),
+		PeriodSecond: viper.GetDuration("period-second"),
+		PeriodMinute: viper.GetDuration("period-minute"),
+	}
 
 	return &Monitor{
 		sockMon:    &SocketMonitor{},
 		ifaceMon:   &NicMonitor{},
 		netstatMon: &NetstatMonitor{},
-		datastore:  NewDatastore(epoch, path),
+		datastore:  NewDatastore(epoch, path, periodOptions),
 	}, nil
 }
 

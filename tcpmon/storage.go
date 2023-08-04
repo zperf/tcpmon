@@ -10,7 +10,6 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	boptions "github.com/dgraph-io/badger/v4/options"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 )
 
 type Datastore struct {
@@ -22,16 +21,14 @@ type Datastore struct {
 	tickerGC     *time.Ticker
 }
 
-type periodOption struct {
+type PeriodOption struct {
 	MaxSize      int
 	DeleteSize   int
 	PeriodSecond time.Duration
 	PeriodMinute time.Duration
 }
 
-var periodOptions *periodOption
-
-func NewDatastore(initialEpoch uint64, path string) *Datastore {
+func NewDatastore(initialEpoch uint64, path string, periodOptions *PeriodOption) *Datastore {
 	options := badger.DefaultOptions(path).
 		// TODO(fanyang) log with zerolog
 		WithLoggingLevel(badger.WARNING).
@@ -47,25 +44,12 @@ func NewDatastore(initialEpoch uint64, path string) *Datastore {
 	log.Info().Uint64("initialEpoch", initialEpoch).Msg("datastore created")
 	tx := make(chan *KVPair, 256)
 
-	if periodOptions == nil {
-		periodOptions = &periodOption{
-			MaxSize:      viper.GetInt("max-size"),
-			DeleteSize:   viper.GetInt("delete-size"),
-			PeriodSecond: viper.GetDuration("period-second"),
-			PeriodMinute: viper.GetDuration("period-minute"),
-		}
-	}
-
 	d := &Datastore{
-		done: make(chan struct{}),
-		tx:   tx,
-		db:   db,
-		// 使用这两行make check会出错
-		// tickerDelete: time.NewTicker(periodOptions.PeriodSecond),
-		// tickerGC:     time.NewTicker(periodOptions.PeriodMinute),
-		// 使用这两行没问题
-		tickerDelete: time.NewTicker(1 * time.Second),
-		tickerGC:     time.NewTicker(5 * time.Minute),
+		done:         make(chan struct{}),
+		tx:           tx,
+		db:           db,
+		tickerDelete: time.NewTicker(periodOptions.PeriodSecond),
+		tickerGC:     time.NewTicker(periodOptions.PeriodMinute),
 	}
 	d.wait.Add(3)
 
