@@ -7,11 +7,12 @@ require (
 	github.com/dgraph-io/badger/v4 v4.1.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-cmd/cmd v1.4.2
+	github.com/golang/protobuf v1.5.3
 	github.com/rs/zerolog v1.30.0
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.4
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.30.0
 )
 
 require (
@@ -35,7 +36,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/glog v1.1.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/flatbuffers v23.5.26+incompatible // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
