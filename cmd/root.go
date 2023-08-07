@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/zperf/tcpmon/tcpmon"
 )
 
 var rootCmd = &cobra.Command{
@@ -70,6 +71,18 @@ func Execute() {
 	rootCmd.PersistentFlags().Duration("gc-period", 10*time.Minute, "period of badger db GC")
 	fatalIf(viper.BindPFlag("gc-period", rootCmd.PersistentFlags().Lookup("gc-period")))
 
+	// log
+	rootCmd.PersistentFlags().String("log-dir", "/tmp/tcpmon-log", "dir to save log files")
+	fatalIf(viper.BindPFlag("log-dir", rootCmd.PersistentFlags().Lookup("log-dir")))
+	rootCmd.PersistentFlags().String("log-filename", "tcpmon.log", "filename of log files")
+	fatalIf(viper.BindPFlag("log-filename", rootCmd.PersistentFlags().Lookup("log-filename")))
+	rootCmd.PersistentFlags().Int("log-max-size", 10, "the max size in MB of the logfile before it's rolled")
+	fatalIf(viper.BindPFlag("log-max-size", rootCmd.PersistentFlags().Lookup("log-max-size")))
+	rootCmd.PersistentFlags().Int("log-max-backups", 5, "the max number of rolled files to keep")
+	fatalIf(viper.BindPFlag("log-max-backups", rootCmd.PersistentFlags().Lookup("log-max-backups")))
+	rootCmd.PersistentFlags().Int("log-max-age", 10, "the max age in days to keep a logfile")
+	fatalIf(viper.BindPFlag("log-max-age", rootCmd.PersistentFlags().Lookup("log-max-age")))
+
 	err := viper.ReadInConfig()
 	if err != nil {
 		var expected viper.ConfigFileNotFoundError
@@ -83,6 +96,18 @@ func Execute() {
 			log.Fatal().Err(err).Msg("failed to read config file")
 		}
 	}
+
+	config := tcpmon.Config{
+		ConsoleLoggingEnabled: true,
+		EncodeLogsAsJson:      false,
+		FileLoggingEnabled:    true,
+		Directory:             viper.GetString("log-dir"),
+		Filename:              viper.GetString("log-filename"),
+		MaxSize:               viper.GetInt("log-max-size"),
+		MaxBackups:            viper.GetInt("log-max-backups"),
+		MaxAge:                viper.GetInt("log-max-age"),
+	}
+	tcpmon.InitLogger(config)
 
 	err = rootCmd.Execute()
 	if err != nil {
