@@ -86,7 +86,6 @@ func (d *Datastore) writer(initialEpoch uint64) {
 		var req *KVPair
 		select {
 		case req = <-d.tx:
-			break
 		case <-d.done:
 			return
 		}
