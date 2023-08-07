@@ -27,12 +27,36 @@ func ParseUint32(s string) (uint32, error) {
 	return uint32(val), nil
 }
 
+func ParseUint64(s string) (uint64, error) {
+	val, err := strconv.ParseUint(s, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return val, nil
+}
+
 func ParseInt(s string) (int, error) {
 	val, err := strconv.ParseInt(s, 10, 32)
 	if err != nil {
 		return 0, err
 	}
 	return int(val), nil
+}
+
+func ParseFloat32(s string) (float32, error) {
+	val, err := strconv.ParseFloat(s, 32)
+	if err != nil {
+		return 0, err
+	}
+	return float32(val), nil
+}
+
+func ParseFloat64(s string) (float64, error) {
+	val, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return 0, err
+	}
+	return val, nil
 }
 
 func ErrorJSON(err error) map[string]any {

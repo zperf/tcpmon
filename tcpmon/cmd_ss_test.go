@@ -52,4 +52,147 @@ ESTAB   0       0        127.0.0.1:41317    127.0.0.1:40554   timer:(keepalive,1
 	assert.Equal("0.0.0.0:*", t.Sockets[1].PeerAddr)
 	assert.Equal("127.0.0.1:40534", t.Sockets[2].PeerAddr)
 	assert.Equal("127.0.0.1:40554", t.Sockets[3].PeerAddr)
+
+	assert.Nil(t.Sockets[0].Timers)
+	assert.Nil(t.Sockets[1].Timers)
+
+	assert.Equal(uint32(0), t.Sockets[0].Skmem.RmemAlloc)
+	assert.Equal(uint32(0), t.Sockets[1].Skmem.RmemAlloc)
+	assert.Equal(uint32(0), t.Sockets[2].Skmem.RmemAlloc)
+	assert.Equal(uint32(0), t.Sockets[3].Skmem.RmemAlloc)
+
+	assert.Equal(uint32(131072), t.Sockets[0].Skmem.RcvBuf)
+	assert.Equal(uint32(131072), t.Sockets[1].Skmem.RcvBuf)
+	assert.Equal(uint32(131072), t.Sockets[2].Skmem.RcvBuf)
+	assert.Equal(uint32(131072), t.Sockets[3].Skmem.RcvBuf)
+
+	assert.Equal(uint32(0), t.Sockets[0].Skmem.WmemAlloc)
+	assert.Equal(uint32(0), t.Sockets[1].Skmem.WmemAlloc)
+	assert.Equal(uint32(0), t.Sockets[2].Skmem.WmemAlloc)
+	assert.Equal(uint32(0), t.Sockets[3].Skmem.WmemAlloc)
+
+	assert.Equal(uint32(16384), t.Sockets[0].Skmem.SndBuf)
+	assert.Equal(uint32(16384), t.Sockets[1].Skmem.SndBuf)
+	assert.Equal(uint32(2626560), t.Sockets[2].Skmem.SndBuf)
+	assert.Equal(uint32(2626560), t.Sockets[3].Skmem.SndBuf)
+
+	assert.Equal(uint32(0), t.Sockets[0].Skmem.FwdAlloc)
+	assert.Equal(uint32(0), t.Sockets[1].Skmem.FwdAlloc)
+	assert.Equal(uint32(0), t.Sockets[2].Skmem.FwdAlloc)
+	assert.Equal(uint32(0), t.Sockets[3].Skmem.FwdAlloc)
+
+	assert.Equal(uint32(0), t.Sockets[0].Skmem.WmemAlloc)
+	assert.Equal(uint32(0), t.Sockets[1].Skmem.WmemAlloc)
+	assert.Equal(uint32(0), t.Sockets[2].Skmem.WmemAlloc)
+	assert.Equal(uint32(0), t.Sockets[3].Skmem.WmemAlloc)
+
+	assert.Equal(uint32(0), t.Sockets[0].Skmem.WmemQueued)
+	assert.Equal(uint32(0), t.Sockets[1].Skmem.WmemQueued)
+	assert.Equal(uint32(0), t.Sockets[2].Skmem.WmemQueued)
+	assert.Equal(uint32(0), t.Sockets[3].Skmem.WmemQueued)
+
+	assert.Equal(uint32(0), t.Sockets[0].Skmem.OptMem)
+	assert.Equal(uint32(0), t.Sockets[1].Skmem.OptMem)
+	assert.Equal(uint32(0), t.Sockets[2].Skmem.OptMem)
+	assert.Equal(uint32(0), t.Sockets[3].Skmem.OptMem)
+
+	assert.Equal(uint32(0), t.Sockets[0].Skmem.BackLog)
+	assert.Equal(uint32(0), t.Sockets[1].Skmem.BackLog)
+	assert.Equal(uint32(0), t.Sockets[2].Skmem.BackLog)
+	assert.Equal(uint32(0), t.Sockets[3].Skmem.BackLog)
+
+	assert.Equal(uint32(0), t.Sockets[0].Skmem.SockDrop)
+	assert.Equal(uint32(0), t.Sockets[1].Skmem.SockDrop)
+	assert.Equal(uint32(276), t.Sockets[2].Skmem.SockDrop)
+	assert.Equal(uint32(276), t.Sockets[3].Skmem.SockDrop)
+
+	assert.True(t.Sockets[0].Cubic)
+	assert.True(t.Sockets[1].Cubic)
+	assert.True(t.Sockets[2].Cubic)
+	assert.True(t.Sockets[3].Cubic)
+
+	assert.True(t.Sockets[2].AppLimited)
+	assert.True(t.Sockets[3].AppLimited)
+
+	assert.Equal(uint32(10), t.Sockets[0].Cwnd)
+	assert.Equal(uint32(10), t.Sockets[1].Cwnd)
+	assert.Equal(uint32(10), t.Sockets[2].Cwnd)
+	assert.Equal(uint32(10), t.Sockets[3].Cwnd)
+
+	assert.Equal(uint32(7), t.Sockets[2].SndWscale)
+	assert.Equal(uint32(7), t.Sockets[2].RcvWscale)
+	assert.Equal(uint32(7), t.Sockets[3].SndWscale)
+	assert.Equal(uint32(7), t.Sockets[3].RcvWscale)
+
+	assert.Equal(206.666, t.Sockets[2].Rto)
+	assert.Equal(206.666, t.Sockets[3].Rto)
+
+	assert.Equal(4.413, t.Sockets[2].Rtt)
+	assert.Equal(8.337, t.Sockets[2].Rttvar)
+	assert.Equal(6.562, t.Sockets[3].Rtt)
+	assert.Equal(12.05, t.Sockets[3].Rttvar)
+
+	assert.Equal(uint32(40), t.Sockets[2].Ato)
+	assert.Equal(uint32(40), t.Sockets[3].Ato)
+
+	assert.Equal(uint32(32768), t.Sockets[2].Mss)
+	assert.Equal(uint32(32768), t.Sockets[3].Mss)
+
+	assert.Equal(uint32(65535), t.Sockets[2].Pmtu)
+	assert.Equal(uint32(65535), t.Sockets[3].Pmtu)
+
+	assert.Equal(uint32(536), t.Sockets[2].Rcvmss)
+	assert.Equal(uint32(536), t.Sockets[3].Rcvmss)
+
+	assert.Equal(uint32(65483), t.Sockets[2].Advmss)
+	assert.Equal(uint32(65483), t.Sockets[3].Advmss)
+
+	assert.Equal(uint32(1257), t.Sockets[2].BytesSent)
+	assert.Equal(uint32(312), t.Sockets[3].BytesSent)
+
+	assert.Equal(uint32(1257), t.Sockets[2].BytesAcked)
+	assert.Equal(uint32(312), t.Sockets[3].BytesAcked)
+
+	assert.Equal(uint32(3442), t.Sockets[2].BytesReceived)
+	assert.Equal(uint32(2099), t.Sockets[3].BytesReceived)
+
+	assert.Equal(uint32(1112), t.Sockets[2].SegsOut)
+	assert.Equal(uint32(1109), t.Sockets[3].SegsOut)
+
+	assert.Equal(uint32(1118), t.Sockets[2].SegsIn)
+	assert.Equal(uint32(1112), t.Sockets[3].SegsIn)
+
+	assert.Equal(uint32(7), t.Sockets[2].DataSegsIn)
+	assert.Equal(uint32(7), t.Sockets[2].DataSegsOut)
+
+	assert.Equal(uint32(4), t.Sockets[3].DataSegsIn)
+	assert.Equal(uint32(4), t.Sockets[3].DataSegsOut)
+
+	assert.Equal(uint32(12721397), t.Sockets[2].Lastsnd)
+	assert.Equal(uint32(12721397), t.Sockets[2].Lastrcv)
+	assert.Equal(uint32(3530), t.Sockets[2].Lastack)
+	assert.Equal(uint32(12722864), t.Sockets[3].Lastsnd)
+	assert.Equal(uint32(12722877), t.Sockets[3].Lastrcv)
+	assert.Equal(uint32(3530), t.Sockets[3].Lastack)
+
+	assert.Equal(uint64(594026739), t.Sockets[2].Send)
+	assert.Equal(uint64(1187918880), t.Sockets[2].PacingRate)
+	assert.Equal(uint64(23831272720), t.Sockets[2].DeliveryRate)
+	assert.Equal(uint64(399487961), t.Sockets[3].Send)
+	assert.Equal(uint64(798975920), t.Sockets[3].PacingRate)
+	assert.Equal(uint64(29127111104), t.Sockets[3].DeliveryRate)
+
+	assert.Equal(uint32(8), t.Sockets[2].Delivered)
+	assert.Equal(uint32(53), t.Sockets[2].BusyMs)
+	assert.Equal(uint32(65483), t.Sockets[2].RcvSpace)
+	assert.Equal(uint32(65483), t.Sockets[2].RcvSsthresh)
+	assert.Equal(0.01, t.Sockets[2].Minrtt)
+	assert.Equal(uint32(65536), t.Sockets[2].SndWnd)
+
+	assert.Equal(uint32(5), t.Sockets[3].Delivered)
+	assert.Equal(uint32(53), t.Sockets[3].BusyMs)
+	assert.Equal(uint32(65483), t.Sockets[3].RcvSpace)
+	assert.Equal(uint32(65483), t.Sockets[3].RcvSsthresh)
+	assert.Equal(0.009, t.Sockets[3].Minrtt)
+	assert.Equal(uint32(65536), t.Sockets[3].SndWnd)
 }
