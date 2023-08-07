@@ -1,22 +1,35 @@
 package tcpmon
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
+
+var LevelMap = map[string]zerolog.Level{
+	"TRACE":    zerolog.TraceLevel,
+	"DEBUG":    zerolog.DebugLevel,
+	"INFO":     zerolog.InfoLevel,
+	"WARN":     zerolog.WarnLevel,
+	"ERROR":    zerolog.ErrorLevel,
+	"FATAL":    zerolog.FatalLevel,
+	"PANIC":    zerolog.PanicLevel,
+	"NO":       zerolog.NoLevel,
+	"DISABLED": zerolog.Disabled,
+}
 
 // Configuration for logging
 type Config struct {
 	// Enable console logging
 	ConsoleLoggingEnabled bool
-	// EncodeLogsAsJson makes the log framework log JSON
-	EncodeLogsAsJson bool
 	// FileLoggingEnabled makes the framework log to a file
 	// the fields below can be skipped if this value is false
 	FileLoggingEnabled bool
@@ -43,8 +56,14 @@ func InitLogger(config Config) {
 	}
 	mw := io.MultiWriter(writers...)
 
+	logLevel, exist := LevelMap[strings.ToUpper(viper.GetString("log-level"))]
+	if !exist {
+		fmt.Println("log level not exist, please check")
+		os.Exit(1)
+	}
+
 	logger := zerolog.New(mw).
-		Level(zerolog.TraceLevel).
+		Level(logLevel).
 		With().
 		Timestamp().
 		Caller().
@@ -52,7 +71,6 @@ func InitLogger(config Config) {
 
 	logger.Info().
 		Bool("fileLogging", config.FileLoggingEnabled).
-		Bool("jsonLogOutput", config.EncodeLogsAsJson).
 		Str("logDirectory", config.Directory).
 		Str("fileName", config.Filename).
 		Int("maxSizeMB", config.MaxSize).
