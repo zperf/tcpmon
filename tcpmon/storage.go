@@ -138,6 +138,8 @@ func (d *Datastore) GetSize() int {
 }
 
 func (d *Datastore) checkDeletePrefix(prefix []byte, maxSize, deleteSize int) {
+	count := d.GetSize()
+
 	err := d.db.Update(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.Prefix = prefix
@@ -145,11 +147,6 @@ func (d *Datastore) checkDeletePrefix(prefix []byte, maxSize, deleteSize int) {
 
 		it := txn.NewIterator(opts)
 		defer it.Close()
-
-		count := 0
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			count++
-		}
 
 		if count > maxSize {
 			deleted := 0
