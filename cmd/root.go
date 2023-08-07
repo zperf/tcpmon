@@ -10,7 +10,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/zperf/tcpmon/tcpmon"
 )
 
 var rootCmd = &cobra.Command{
@@ -82,6 +81,8 @@ func Execute() {
 	fatalIf(viper.BindPFlag("log-max-backups", rootCmd.PersistentFlags().Lookup("log-max-backups")))
 	rootCmd.PersistentFlags().Int("log-max-age", 10, "the max age in days to keep a logfile")
 	fatalIf(viper.BindPFlag("log-max-age", rootCmd.PersistentFlags().Lookup("log-max-age")))
+	rootCmd.PersistentFlags().String("log-level", "Trace", "log level")
+	fatalIf(viper.BindPFlag("log-level", rootCmd.PersistentFlags().Lookup("log-level")))
 
 	err := viper.ReadInConfig()
 	if err != nil {
@@ -96,18 +97,6 @@ func Execute() {
 			log.Fatal().Err(err).Msg("failed to read config file")
 		}
 	}
-
-	config := tcpmon.Config{
-		ConsoleLoggingEnabled: true,
-		EncodeLogsAsJson:      false,
-		FileLoggingEnabled:    true,
-		Directory:             viper.GetString("log-dir"),
-		Filename:              viper.GetString("log-filename"),
-		MaxSize:               viper.GetInt("log-max-size"),
-		MaxBackups:            viper.GetInt("log-max-backups"),
-		MaxAge:                viper.GetInt("log-max-age"),
-	}
-	tcpmon.InitLogger(config)
 
 	err = rootCmd.Execute()
 	if err != nil {
