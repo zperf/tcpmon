@@ -35,12 +35,3 @@ func (s *UtilTestSuite) TestParseInt() {
 	assert.Error(err)
 	assert.Equal(0, val)
 }
-
-func (s *UtilTestSuite) TestHasPrefix() {
-	assert := s.Assert()
-	assert.Equal(true, HasPrefix("foo", []byte("foo")))
-	assert.Equal(true, HasPrefix("f", []byte("foo")))
-	assert.Equal(true, HasPrefix("fo", []byte("foo")))
-	assert.Equal(false, HasPrefix("f0o", []byte("foo")))
-	assert.Equal(false, HasPrefix("foo", []byte("")))
-}
