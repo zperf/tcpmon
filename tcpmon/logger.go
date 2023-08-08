@@ -87,5 +87,6 @@ func newRollingFile(config Config) io.Writer {
 		MaxBackups: config.MaxBackups, // files
 		MaxSize:    config.MaxSize,    // megabytes
 		MaxAge:     config.MaxAge,     // days
+		LocalTime:  true,              // use local time, default UTC time
 	}
 }
