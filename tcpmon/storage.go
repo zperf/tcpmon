@@ -86,7 +86,6 @@ func (d *Datastore) writer(initialEpoch uint64) {
 		var req *KVPair
 		select {
 		case req = <-d.tx:
-			break
 		case <-d.done:
 			return
 		}
@@ -118,7 +117,7 @@ func (d *Datastore) writer(initialEpoch uint64) {
 }
 
 func (d *Datastore) GetSize() int {
-	count := 0
+	size := 0
 	err := d.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
@@ -126,7 +125,7 @@ func (d *Datastore) GetSize() int {
 		defer it.Close()
 
 		for it.Rewind(); it.Valid(); it.Next() {
-			count++
+			size++
 		}
 		return nil
 	})
@@ -134,10 +133,15 @@ func (d *Datastore) GetSize() int {
 		log.Fatal().Err(errors.WithStack(err)).Msg("get size failed")
 	}
 
-	return count
+	return size
 }
 
 func (d *Datastore) checkDeletePrefix(prefix []byte, maxSize, deleteSize int) {
+	size := d.GetSize()
+	if size <= maxSize {
+		return
+	}
+
 	err := d.db.Update(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.Prefix = prefix
@@ -146,26 +150,19 @@ func (d *Datastore) checkDeletePrefix(prefix []byte, maxSize, deleteSize int) {
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
-		count := 0
+		deleted := 0
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			count++
-		}
-
-		if count > maxSize {
-			deleted := 0
-			for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-				if deleted >= deleteSize || deleted >= count-maxSize {
-					break
-				}
-
-				item := it.Item()
-				key := item.KeyCopy(nil)
-				err := txn.Delete(key)
-				if err != nil {
-					log.Warn().Err(err).Str("key", string(key)).Msg("failed to delete item")
-				}
-				deleted++
+			if deleted >= deleteSize || deleted >= size-maxSize {
+				break
 			}
+
+			item := it.Item()
+			key := item.KeyCopy(nil)
+			err := txn.Delete(key)
+			if err != nil {
+				log.Warn().Err(err).Str("key", string(key)).Msg("failed to delete item")
+			}
+			deleted++
 		}
 
 		return nil

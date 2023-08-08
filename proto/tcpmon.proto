@@ -24,12 +24,76 @@ enum SocketState {
   TCP_NEW_SYN_RECV = 11;
 }
 
+// Socket memory usage. aka skmem
+// check: https://man7.org/linux/man-pages/man8/ss.8.html
+message SocketMemoryUsage {
+  uint32 rmem_alloc = 1;  // the memory allocated for receiving packet
+  uint32 rcv_buf = 2;     // the total memory can be allocated for receiving packet
+  uint32 wmem_alloc = 3;  // the memory used for sending packet (which has been sent to layer 3)
+  uint32 snd_buf = 4;     // the total memory can be allocated for sending packet
+  uint32 fwd_alloc = 5;   // the memory allocated by the socket as cache, but not used for receiving/sending packet yet.
+  uint32 wmem_queued = 6; // The memory allocated for sending packet (which has not been sent to layer 3)
+  uint32 opt_mem = 7;     // The memory used for storing socket option, e.g., the key for TCP MD5 signature
+  uint32 back_log = 8;    // The memory used for the sk backlog queue
+  uint32 sock_drop = 9;   // the number of packets dropped before they are de-multiplexed into the socket
+}
+
+message TimerInfo {
+  string name = 1; // the name of timer
+  uint32 expire_time_sec = 2;
+  uint32 retrans = 3;
+}
+
 message SocketMetric {
   SocketState state = 3;
   uint32 recv_q = 4;
   uint32 send_q = 5;
   string local_addr = 6;
   string peer_addr = 7;
+
+  repeated TimerInfo timers = 8;
+  SocketMemoryUsage skmem = 9;
+
+  bool ts = 10;
+  bool sack = 11;
+  bool cubic = 12;
+  bool app_limited = 13;
+
+  uint64 pacing_rate = 14;
+  uint64 delivery_rate = 15;
+  uint64 send = 16;
+
+  uint32 snd_wscale = 17; // window scaling
+  uint32 rcv_wscale = 18;
+  double rto = 19;
+  double rtt = 20;
+  double rttvar = 21;
+  double minrtt = 22;
+  double rcv_rtt = 23;
+  uint32 retrans_now = 24;
+  uint32 retrans_total = 25;
+
+  uint32 ato = 30;
+  uint32 mss = 31;
+  uint32 pmtu = 32;
+  uint32 rcvmss = 33;
+  uint32 advmss = 34;
+  uint32 cwnd = 35;
+  uint32 snd_wnd = 36;
+  uint32 bytes_sent = 37;
+  uint32 bytes_acked = 38;
+  uint32 bytes_received = 39;
+  uint32 segs_out = 40;
+  uint32 segs_in = 41;
+  uint32 lastsnd = 42;
+  uint32 lastrcv = 43;
+  uint32 lastack = 44;
+  uint32 delivered = 45;
+  uint32 busy_ms = 46;
+  uint32 rcv_space = 47;
+  uint32 rcv_ssthresh = 48;
+  uint32 data_segs_out = 49;
+  uint32 data_segs_in = 50;
 }
 
 message TcpMetric {
@@ -67,27 +131,27 @@ message NetstatMetric {
   MetricType type = 2;
   // fields
   uint32 ip_total_packets_received = 3;
-	uint32 ip_forwarded = 4;
-	uint32 ip_incoming_packets_discarded = 5;
-	uint32 ip_incoming_packets_delivered = 6;
-	uint32 ip_requests_sent_out = 7;
-	uint32 ip_outgoing_packets_dropped = 8;
+  uint32 ip_forwarded = 4;
+  uint32 ip_incoming_packets_discarded = 5;
+  uint32 ip_incoming_packets_delivered = 6;
+  uint32 ip_requests_sent_out = 7;
+  uint32 ip_outgoing_packets_dropped = 8;
 
-	uint32 tcp_active_connections_openings = 9;
-	uint32 tcp_passive_connection_openings = 10;
-	uint32 tcp_failed_connection_attempts = 11;
-	uint32 tcp_connection_resets_received = 12;
-	uint32 tcp_connections_established = 13;
-	uint32 tcp_segments_received = 14;
-	uint32 tcp_segments_send_out = 15;
-	uint32 tcp_segments_retransmitted = 16;
-	uint32 tcp_bad_segments_received = 17;
-	uint32 tcp_resets_sent = 18;
+  uint32 tcp_active_connections_openings = 9;
+  uint32 tcp_passive_connection_openings = 10;
+  uint32 tcp_failed_connection_attempts = 11;
+  uint32 tcp_connection_resets_received = 12;
+  uint32 tcp_connections_established = 13;
+  uint32 tcp_segments_received = 14;
+  uint32 tcp_segments_send_out = 15;
+  uint32 tcp_segments_retransmitted = 16;
+  uint32 tcp_bad_segments_received = 17;
+  uint32 tcp_resets_sent = 18;
 
-	uint32 udp_packets_received = 19;
-	uint32 udp_packets_to_unknown_port_received = 20;
-	uint32 udp_packet_receive_errors = 21;
-	uint32 udp_packets_sent = 22;
-	uint32 udp_receive_buffer_errors = 23;
-	uint32 udp_send_buffer_errors = 24;
+  uint32 udp_packets_received = 19;
+  uint32 udp_packets_to_unknown_port_received = 20;
+  uint32 udp_packet_receive_errors = 21;
+  uint32 udp_packets_sent = 22;
+  uint32 udp_receive_buffer_errors = 23;
+  uint32 udp_send_buffer_errors = 24;
 }
