@@ -3,16 +3,11 @@ package tcpmon
 import (
 	"crypto/rand"
 	"encoding/binary"
-	"encoding/json"
-	"fmt"
 	"os"
 	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/rs/zerolog/log"
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
 )
 
 func randUint64() (uint64, error) {
@@ -32,6 +27,14 @@ func ParseUint32(s string) (uint32, error) {
 	return uint32(val), nil
 }
 
+func ParseUint64(s string) (uint64, error) {
+	val, err := strconv.ParseUint(s, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return val, nil
+}
+
 func ParseInt(s string) (int, error) {
 	val, err := strconv.ParseInt(s, 10, 32)
 	if err != nil {
@@ -40,43 +43,24 @@ func ParseInt(s string) (int, error) {
 	return int(val), nil
 }
 
-func ParseBool(s string) bool {
-	return s == "1" || s == "true" || s == "on" || s == "True" || s == "On"
-}
-
-func HasPrefix(prefix string, buf []byte) bool {
-	return len(buf) >= len(prefix) && prefix == string(buf[:len(prefix)])
-}
-
-func ToProtojson(m proto.Message) map[string]any {
-	buf, err := protojson.Marshal(m)
+func ParseFloat32(s string) (float32, error) {
+	val, err := strconv.ParseFloat(s, 32)
 	if err != nil {
-		return map[string]any{"error": err}
+		return 0, err
 	}
-	var val map[string]any
-	err = json.Unmarshal(buf, &val)
-	if err != nil {
-		return map[string]any{"error": err}
-	}
-	return val
+	return float32(val), nil
 }
 
-func ErrorStr(err error) string {
-	return fmt.Sprintf("error: %v", err)
+func ParseFloat64(s string) (float64, error) {
+	val, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return 0, err
+	}
+	return val, nil
 }
 
 func ErrorJSON(err error) map[string]any {
 	return map[string]any{"error": err.Error()}
-}
-
-func FilterStringsByPrefix(s []string, prefix string) []string {
-	r := make([]string, 0)
-	for _, v := range s {
-		if strings.HasPrefix(v, prefix) {
-			r = append(r, v)
-		}
-	}
-	return r
 }
 
 func Hostname() string {

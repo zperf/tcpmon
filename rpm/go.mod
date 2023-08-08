@@ -1,4 +1,4 @@
-module github.com/zperf/tcpmon/tools
+module github.com/zperf/tcpmon/rpm
 
 go 1.20
 
