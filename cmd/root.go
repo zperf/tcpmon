@@ -44,6 +44,10 @@ func Execute() {
 	fatalIf(viper.BindPFlag("data-file", backupCmd.Flags().Lookup("data-file")))
 	rootCmd.AddCommand(backupCmd)
 
+	// cmd: config
+	configCmd.AddCommand(configGetDefaultCmd)
+	rootCmd.AddCommand(configCmd)
+
 	// path
 	rootCmd.PersistentFlags().String("db", "/tmp/tcpmon", "Database path")
 	fatalIf(viper.BindPFlag("db", rootCmd.PersistentFlags().Lookup("db")))

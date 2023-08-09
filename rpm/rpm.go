@@ -50,19 +50,28 @@ func BuildRPM(arch string) {
 		"%s-%s-%v.%s.rpm", rpmMeta.Name, rpmMeta.Version, rpmMeta.Release, rpmMeta.Arch)
 
 	rpm.AddFile(rpmpack.RPMFile{
-		Name: "/usr/bin/tcpmon",
-		Body: ReadFile("../bin/tcpmon-" + arch),
-		Type: rpmpack.GenericFile,
+		Name:  "/usr/bin/tcpmon",
+		Body:  ReadFile("../bin/tcpmon-" + arch),
+		Type:  rpmpack.GenericFile,
+		Mode:  0775,
+		Owner: "root",
+		Group: "root",
 	})
 	rpm.AddFile(rpmpack.RPMFile{
-		Name: "/etc/tcpmon/config.yaml",
-		Body: ReadFile("tcpmon.yaml"),
-		Type: rpmpack.ConfigFile,
+		Name:  "/etc/tcpmon/config.yaml",
+		Body:  ReadFile("tcpmon.yaml"),
+		Type:  rpmpack.ConfigFile,
+		Mode:  0644,
+		Owner: "root",
+		Group: "root",
 	})
 	rpm.AddFile(rpmpack.RPMFile{
-		Name: "/etc/systemd/system/tcpmon.service",
-		Body: ReadFile("tcpmon.service"),
-		Type: rpmpack.GenericFile,
+		Name:  "/etc/systemd/system/tcpmon.service",
+		Body:  ReadFile("tcpmon.service"),
+		Type:  rpmpack.GenericFile,
+		Mode:  0644,
+		Owner: "root",
+		Group: "root",
 	})
 
 	fh, err := os.OpenFile(rpmFilename, os.O_WRONLY|os.O_CREATE, 0644)
