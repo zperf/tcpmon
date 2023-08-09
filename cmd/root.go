@@ -35,6 +35,15 @@ func Execute() {
 	fatalIf(viper.BindPFlag("listen", startCmd.Flags().Lookup("listen")))
 	rootCmd.AddCommand(startCmd)
 
+	// cmd: backup
+	backupCmd.PersistentFlags().String("backup-db", "/home/XHRClient/tcpmon", "backup db path")
+	fatalIf(viper.BindPFlag("backup-db", backupCmd.PersistentFlags().Lookup("backup-db")))
+	backupCmd.Flags().String("backup-file", "/home/XHRClient/output.txt", "badger db backup file")
+	fatalIf(viper.BindPFlag("backup-file", backupCmd.Flags().Lookup("backup-file")))
+	backupCmd.Flags().String("data-file", "/home/XHRClient/data.json", "json format data file")
+	fatalIf(viper.BindPFlag("data-file", backupCmd.Flags().Lookup("data-file")))
+	rootCmd.AddCommand(backupCmd)
+
 	// path
 	rootCmd.PersistentFlags().String("db", "/tmp/tcpmon", "Database path")
 	fatalIf(viper.BindPFlag("db", rootCmd.PersistentFlags().Lookup("db")))

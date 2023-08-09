@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const CheckRecordNumber = 3
 const PrefixTcpRecord = "tcp"
 const PrefixNicRecord = "nic"
 const PrefixNetRecord = "net"
