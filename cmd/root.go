@@ -35,6 +35,19 @@ func Execute() {
 	fatalIf(viper.BindPFlag("listen", startCmd.Flags().Lookup("listen")))
 	rootCmd.AddCommand(startCmd)
 
+	// cmd: backup
+	loadAndParseCmd.Flags().String("default-db", "/tmp/lap/defaultDB", "default db path for parse db data")
+	fatalIf(viper.BindPFlag("default-db", loadAndParseCmd.Flags().Lookup("default-db")))
+	loadAndParseCmd.Flags().String("load-db", "", "db path for recovering from backup, empty for not recovering")
+	fatalIf(viper.BindPFlag("load-db", loadAndParseCmd.Flags().Lookup("load-db")))
+	loadAndParseCmd.Flags().String("input", "/tmp/lap/input.txt", "input backup file")
+	fatalIf(viper.BindPFlag("input", loadAndParseCmd.Flags().Lookup("input")))
+	loadAndParseCmd.Flags().String("output", "", "output json format file, empty for stdout")
+	fatalIf(viper.BindPFlag("output", loadAndParseCmd.Flags().Lookup("output")))
+	loadAndParseCmd.Flags().String("prefix", "", "key prefix, empty for all key")
+	fatalIf(viper.BindPFlag("prefix", loadAndParseCmd.Flags().Lookup("prefix")))
+	rootCmd.AddCommand(loadAndParseCmd)
+
 	// cmd: config
 	configCmd.AddCommand(configGetDefaultCmd)
 	rootCmd.AddCommand(configCmd)

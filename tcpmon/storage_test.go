@@ -135,13 +135,13 @@ func (s *StorageTestSuite) TestPeriodicReclaim() {
 	}
 	s.writeBarrier(tx)
 
-	size := ds.GetSize()
+	size := ds.GetSize(nil)
 	log.Trace().Int("size", size).Msg("insert")
 
 	// wait for reclaim trigger
 	time.Sleep(s.periodOptions.ReclaimPeriod + time.Second)
 
-	size = ds.GetSize()
+	size = ds.GetSize(nil)
 	log.Info().Int("size", size).Msg("reclaim done")
 
 	s.Assert().GreaterOrEqual(s.periodOptions.MaxSize, size)

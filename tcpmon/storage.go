@@ -116,10 +116,11 @@ func (d *Datastore) writer(initialEpoch uint64) {
 	}
 }
 
-func (d *Datastore) GetSize() int {
+func (d *Datastore) GetSize(prefix []byte) int {
 	size := 0
 	err := d.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
+		opts.Prefix = prefix
 		opts.PrefetchValues = false
 		it := txn.NewIterator(opts)
 		defer it.Close()
@@ -137,7 +138,7 @@ func (d *Datastore) GetSize() int {
 }
 
 func (d *Datastore) checkDeletePrefix(prefix []byte, maxSize, deleteSize int) {
-	size := d.GetSize()
+	size := d.GetSize(prefix)
 	if size <= maxSize {
 		return
 	}
@@ -179,7 +180,7 @@ func (d *Datastore) periodicReclaim(maxSize, deleteSize int) {
 		log.Info().Msg("datastore periodic delete exited")
 	}(&d.wait)
 
-	maxSize, deleteSize = maxSize/3, deleteSize/3
+	maxSize, deleteSize = maxSize/CheckRecordNumber, deleteSize/CheckRecordNumber
 	for {
 		select {
 		case <-d.done:
