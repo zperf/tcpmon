@@ -105,7 +105,7 @@ var loadAndParseCmd = &cobra.Command{
 						continue
 					}
 				} else {
-					fmt.Printf("{%v}\n", msg)
+					fmt.Printf("{%v}\n\n", msg)
 				}
 			}
 			return nil
