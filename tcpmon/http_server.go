@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -16,6 +17,7 @@ func InitRoutes(router *gin.Engine, mon *Monitor) {
 	router.GET("/metrics", GetMetrics(ds))
 	router.GET("/metrics/:type", GetMetrics(ds))
 	router.GET("/backup", GetBackup(ds))
+	pprof.Register(router)
 }
 
 func GetBackup(ds *Datastore) func(c *gin.Context) {
