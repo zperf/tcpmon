@@ -59,7 +59,7 @@ func Execute() {
 	fatalIf(viper.BindPFlag("ifconfig", rootCmd.PersistentFlags().Lookup("ifconfig")))
 	rootCmd.PersistentFlags().String("ss", "/usr/bin/ss", "Command 'ss' path")
 	fatalIf(viper.BindPFlag("ss", rootCmd.PersistentFlags().Lookup("ss")))
-	rootCmd.PersistentFlags().String("ss-arg", "-4ntipmoHOna", "Set the arg for ss")
+	rootCmd.PersistentFlags().String("ss-arg", "-4ntipmoHna", "Set the arg for ss")
 	fatalIf(viper.BindPFlag("ss-arg", rootCmd.PersistentFlags().Lookup("ss-arg")))
 	rootCmd.PersistentFlags().String("netstat", "/usr/bin/netstat", "Command 'netstat' path")
 	fatalIf(viper.BindPFlag("netstat", rootCmd.PersistentFlags().Lookup("netstat")))

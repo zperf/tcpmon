@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/cockroachdb/errors"
 	"github.com/go-cmd/cmd"
@@ -122,7 +123,8 @@ func setMetric(m *SocketMetric, field string) {
 
 	value, err := ParseUint32(valueStr)
 	if err != nil {
-		log.Fatal().Str("value", valueStr).Str("key", key).Err(errors.WithStack(err)).Msg("parse failed")
+		log.Warn().Str("value", valueStr).Str("key", key).Err(errors.WithStack(err)).Msg("parse failed")
+		return
 	}
 	switch key {
 	case "ato":
@@ -248,6 +250,63 @@ func ParseSSOutput(t *TcpMetric, out []string) {
 	}
 }
 
+func ParseSSOutputWithoutParamO(t *TcpMetric, out []string) {
+	var s SocketMetric
+	for _, line := range out {
+		fields := strings.FieldsFunc(line, func(c rune) bool {
+			return unicode.IsSpace(c)
+		})
+
+		var exist bool
+		if len(fields) == 0 {
+			exist = false
+		} else {
+			_, exist = socketStateMap[fields[0]]
+		}
+		if exist {
+			s = SocketMetric{}
+			s.State = ToPbState(fields[0])
+			n, _ := ParseUint32(fields[1])
+			s.RecvQ = n
+			n, _ = ParseUint32(fields[2])
+			s.SendQ = n
+			s.LocalAddr = fields[3]
+			s.PeerAddr = fields[4]
+			// 忽略了此项
+			// users:(("sshd",pid=27170,fd=3))
+		} else {
+			var lastRateName string
+			for _, field := range fields {
+				switch field {
+				case "ts":
+					s.Ts = true
+				case "sack":
+					s.Sack = true
+				case "cubic":
+					s.Cubic = true
+				case "app_limited":
+					s.AppLimited = true
+				default:
+					// rate handling: pacing_rate, delivery_rate and send
+					if isRate(field) {
+						lastRateName = field
+					} else if lastRateName != "" && strings.HasSuffix(field, "bps") {
+						rate, _ := ParseUint64(strings.TrimSuffix(field, "bps"))
+						setRate(&s, lastRateName, rate)
+					} else if strings.Contains(field, ":(") {
+						// timers
+						parseTimerOrMeminfo(&s, field)
+					} else {
+						// other metrics
+						setMetric(&s, field)
+					}
+				}
+			}
+			t.Sockets = append(t.Sockets, &s)
+		}
+	}
+}
+
 func RunSS(now time.Time) (*TcpMetric, string, error) {
 	if ssOptions == nil {
 		ssOptions = &ssOption{
@@ -268,7 +327,7 @@ func RunSS(now time.Time) (*TcpMetric, string, error) {
 		var t TcpMetric
 		t.Timestamp = timestamppb.New(now)
 		t.Type = MetricType_TCP
-		ParseSSOutput(&t, st.Stdout)
+		ParseSSOutputWithoutParamO(&t, st.Stdout)
 		return &t, strings.Join(st.Stdout, "\n"), nil
 	}
 }
