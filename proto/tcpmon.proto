@@ -40,8 +40,14 @@ message SocketMemoryUsage {
 
 message TimerInfo {
   string name = 1; // the name of timer
-  uint32 expire_time_sec = 2;
+  uint64 expire_time_microsecond = 2;
   uint32 retrans = 3;
+}
+
+message ProcessInfo {
+  string name = 1;
+  uint32 pid = 2;
+  uint32 fd = 3;
 }
 
 message SocketMetric {
@@ -51,27 +57,28 @@ message SocketMetric {
   string local_addr = 6;
   string peer_addr = 7;
 
-  repeated TimerInfo timers = 8;
-  SocketMemoryUsage skmem = 9;
+  repeated ProcessInfo processes = 8;
+  repeated TimerInfo timers = 9;
+  SocketMemoryUsage skmem = 10;
 
-  bool ts = 10;
-  bool sack = 11;
-  bool cubic = 12;
-  bool app_limited = 13;
+  bool ts = 11;
+  bool sack = 12;
+  bool cubic = 13;
+  bool app_limited = 14;
 
-  uint64 pacing_rate = 14;
-  uint64 delivery_rate = 15;
-  uint64 send = 16;
+  uint64 pacing_rate = 15;
+  uint64 delivery_rate = 16;
+  uint64 send = 17;
 
-  uint32 snd_wscale = 17; // window scaling
-  uint32 rcv_wscale = 18;
-  double rto = 19;
-  double rtt = 20;
-  double rttvar = 21;
-  double minrtt = 22;
-  double rcv_rtt = 23;
-  uint32 retrans_now = 24;
-  uint32 retrans_total = 25;
+  uint32 snd_wscale = 18; // window scaling
+  uint32 rcv_wscale = 19;
+  double rto = 20;
+  double rtt = 21;
+  double rttvar = 22;
+  double minrtt = 23;
+  double rcv_rtt = 24;
+  uint32 retrans_now = 25;
+  uint32 retrans_total = 26;
 
   uint32 ato = 30;
   uint32 mss = 31;

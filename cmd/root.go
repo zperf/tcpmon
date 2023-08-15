@@ -35,7 +35,7 @@ func Execute() {
 	fatalIf(viper.BindPFlag("listen", startCmd.Flags().Lookup("listen")))
 	rootCmd.AddCommand(startCmd)
 
-	// cmd: backup
+	// cmd: lap
 	loadAndParseCmd.Flags().String("default-db", "/tmp/lap/defaultDB", "default db path for parse db data")
 	fatalIf(viper.BindPFlag("default-db", loadAndParseCmd.Flags().Lookup("default-db")))
 	loadAndParseCmd.Flags().String("load-db", "", "db path for recovering from backup, empty for not recovering")
