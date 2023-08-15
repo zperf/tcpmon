@@ -33,7 +33,11 @@ func NewDatastore(initialEpoch uint64, path string, periodOptions *PeriodOption)
 		WithLogger(&BadgerZeroLogger{}).
 		WithInMemory(false).
 		WithCompression(boptions.ZSTD).
-		WithValueLogFileSize(100 * 1000 * 1000) // MB
+		WithNumGoroutines(2).
+		WithNumMemtables(1).
+		WithMemTableSize(16 << 20).
+		WithCompactL0OnClose(true).
+		WithValueLogFileSize(100 << 20) // MB
 
 	db, err := badger.Open(options)
 	if err != nil {
