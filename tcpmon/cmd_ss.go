@@ -170,17 +170,17 @@ func setMetric(m *SocketMetric, field string) {
 	}
 }
 
-func parseTimerOrMeminfo(m *SocketMetric, s string) {
+func parseInfos(m *SocketMetric, s string) {
 	p := strings.Index(s, ":(")
 	if p == -1 {
 		log.Fatal().Str("field", s).Msg("parse failed")
 	}
 
 	name := s[:p]
-	fields := strings.FieldsFunc(s[p+2:len(s)-1], func(r rune) bool {
-		return ',' == r
-	})
 	if name == "skmem" {
+		fields := strings.FieldsFunc(s[p+2:len(s)-1], func(r rune) bool {
+			return ',' == r
+		})
 		skmem := SocketMemoryUsage{}
 		skmem.RmemAlloc, _ = ParseUint32(strings.TrimPrefix(fields[0], "r"))
 		skmem.RcvBuf, _ = ParseUint32(strings.TrimPrefix(fields[1], "rb"))
@@ -193,13 +193,36 @@ func parseTimerOrMeminfo(m *SocketMetric, s string) {
 		skmem.SockDrop, _ = ParseUint32(strings.TrimPrefix(fields[8], "d"))
 		m.Skmem = &skmem
 	} else if name == "timer" {
-		t := TimerInfo{}
+		fields := strings.FieldsFunc(s[p+2:len(s)-1], func(r rune) bool {
+			return ',' == r
+		})
+		t := &TimerInfo{}
 		t.Name = fields[0]
 		if len(fields) == 3 {
-			t.ExpireTimeSec, _ = ParseUint32(strings.TrimSuffix(fields[1], "sec"))
+			if strings.Contains(fields[1], "min") && strings.HasSuffix(fields[1], "sec") {
+				ExpireTime := strings.Split(strings.TrimSuffix(fields[1], "sec"), "min")
+				ExpireTimeMin, _ := ParseUint32(ExpireTime[0])
+				ExpireTimeSec, _ := ParseUint32(ExpireTime[1])
+				t.ExpireTimeSec = ExpireTimeMin*60 + ExpireTimeSec
+			} else if strings.HasSuffix(fields[1], "min") {
+				ExpireTimeMin, _ := ParseUint32(strings.TrimSuffix(fields[1], "min"))
+				t.ExpireTimeSec = ExpireTimeMin * 60
+			} else if strings.HasSuffix(fields[1], "sec") {
+				t.ExpireTimeSec, _ = ParseUint32(strings.TrimSuffix(fields[1], "sec"))
+			}
 			t.Retrans, _ = ParseUint32(fields[2])
 		}
-		m.Timers = append(m.Timers, &t)
+		m.Timers = append(m.Timers, t)
+	} else if name == "users" {
+		fields := strings.Split(s[p+3:len(s)-2], "),(")
+		for _, field := range fields {
+			u := &ProcessInfo{}
+			f := strings.Split(field, ",")
+			u.Name = strings.Trim(f[0], "\"")
+			u.Pid, _ = ParseUint32(strings.TrimPrefix(f[1], "pid="))
+			u.Fd, _ = ParseUint32(strings.TrimPrefix(f[2], "fd="))
+			m.Users = append(m.Users, u)
+		}
 	}
 }
 
@@ -238,7 +261,7 @@ func ParseSSOutput(t *TcpMetric, out []string) {
 					setRate(&s, lastRateName, rate)
 				} else if strings.Contains(field, ":(") {
 					// timers
-					parseTimerOrMeminfo(&s, field)
+					parseInfos(&s, field)
 				} else {
 					// other metrics
 					setMetric(&s, field)
@@ -251,7 +274,7 @@ func ParseSSOutput(t *TcpMetric, out []string) {
 }
 
 func ParseSSOutputWithoutParamO(t *TcpMetric, out []string) {
-	var s SocketMetric
+	s := &SocketMetric{}
 	for _, line := range out {
 		fields := strings.FieldsFunc(line, func(c rune) bool {
 			return unicode.IsSpace(c)
@@ -264,7 +287,7 @@ func ParseSSOutputWithoutParamO(t *TcpMetric, out []string) {
 			_, exist = socketStateMap[fields[0]]
 		}
 		if exist {
-			s = SocketMetric{}
+			s = &SocketMetric{}
 			s.State = ToPbState(fields[0])
 			n, _ := ParseUint32(fields[1])
 			s.RecvQ = n
@@ -272,8 +295,12 @@ func ParseSSOutputWithoutParamO(t *TcpMetric, out []string) {
 			s.SendQ = n
 			s.LocalAddr = fields[3]
 			s.PeerAddr = fields[4]
-			// 忽略了此项
-			// users:(("sshd",pid=27170,fd=3))
+			for _, field := range fields[5:] {
+				if strings.Contains(field, ":(") {
+					// users and timer
+					parseInfos(s, field)
+				}
+			}
 		} else {
 			var lastRateName string
 			for _, field := range fields {
@@ -291,18 +318,27 @@ func ParseSSOutputWithoutParamO(t *TcpMetric, out []string) {
 					if isRate(field) {
 						lastRateName = field
 					} else if lastRateName != "" && strings.HasSuffix(field, "bps") {
-						rate, _ := ParseUint64(strings.TrimSuffix(field, "bps"))
-						setRate(&s, lastRateName, rate)
+						var rate uint64
+						if strings.HasSuffix(field, "Gbps") {
+							rateG, _ := ParseFloat64(strings.TrimSuffix(field, "Gbps"))
+							rate = uint64(rateG * 1000.0 * 1000.0)
+						} else if strings.HasSuffix(field, "Mbps") {
+							rateM, _ := ParseFloat64(strings.TrimSuffix(field, "Mbps"))
+							rate = uint64(rateM * 1000.0)
+						} else {
+							rate, _ = ParseUint64(strings.TrimSuffix(field, "bps"))
+						}
+						setRate(s, lastRateName, rate)
 					} else if strings.Contains(field, ":(") {
-						// timers
-						parseTimerOrMeminfo(&s, field)
+						// skmem
+						parseInfos(s, field)
 					} else {
 						// other metrics
-						setMetric(&s, field)
+						setMetric(s, field)
 					}
 				}
 			}
-			t.Sockets = append(t.Sockets, &s)
+			t.Sockets = append(t.Sockets, s)
 		}
 	}
 }
