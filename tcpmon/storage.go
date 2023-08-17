@@ -30,8 +30,7 @@ type PeriodOption struct {
 
 func NewDatastore(initialEpoch uint64, path string, periodOptions *PeriodOption) *Datastore {
 	options := badger.DefaultOptions(path).
-		// TODO(fanyang) log with zerolog
-		WithLoggingLevel(badger.WARNING).
+		WithLogger(&BadgerZeroLogger{}).
 		WithInMemory(false).
 		WithCompression(boptions.ZSTD).
 		WithValueLogFileSize(100 * 1000 * 1000) // MB

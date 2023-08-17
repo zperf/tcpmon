@@ -5,6 +5,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -16,8 +17,10 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start monitoring",
 	Run: func(cmd *cobra.Command, args []string) {
-		config := tcpmon.Config{
-			ConsoleLoggingEnabled: true,
+		level, _ := zerolog.ParseLevel(viper.GetString("log-level"))
+		config := tcpmon.LogConfig{
+			Level:                 level,
+			ConsoleLoggingEnabled: false,
 			FileLoggingEnabled:    true,
 			Directory:             viper.GetString("log-dir"),
 			Filename:              viper.GetString("log-filename"),
@@ -25,7 +28,10 @@ var startCmd = &cobra.Command{
 			MaxBackups:            viper.GetInt("log-max-backups"),
 			MaxAge:                viper.GetInt("log-max-age"),
 		}
-		tcpmon.InitLogger(config)
+		tcpmon.InitLogger(&config)
+		if level == zerolog.NoLevel {
+			log.Warn().Str("level", viper.GetString("log-level")).Msg("invalid level, default to NoLevel")
+		}
 
 		m, err := tcpmon.New()
 		if err != nil {
