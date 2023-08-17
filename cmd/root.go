@@ -102,8 +102,8 @@ func Execute() {
 	fatalIf(viper.BindPFlag("log-level", rootCmd.PersistentFlags().Lookup("log-level")))
 
 	// gossip
-	rootCmd.PersistentFlags().String("gossip-cluster", "192.168.93.73, 192.168.93.190, 192.168.93.44", "initial gossip cluster addresses")
-	fatalIf(viper.BindPFlag("gossip-cluster", rootCmd.PersistentFlags().Lookup("gossip-cluster")))
+	rootCmd.PersistentFlags().String("initial-members", "192.168.93.73, 192.168.93.190, 192.168.93.44", "initial gossip members address")
+	fatalIf(viper.BindPFlag("initial-members", rootCmd.PersistentFlags().Lookup("initial-members")))
 
 	err := viper.ReadInConfig()
 	if err != nil {

@@ -3,8 +3,10 @@ package tcpmon
 import (
 	"context"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog/log"
@@ -34,12 +36,18 @@ func New() (*Monitor, error) {
 		GCPeriod:      viper.GetDuration("gc-period"),
 	}
 
+	initialMembers := strings.FieldsFunc(viper.GetString("initial-members"), func(c rune) bool {
+		return unicode.IsSpace(c) || c == ','
+	})
+	gs := NewGossipServer()
+	gs.Join(initialMembers)
+
 	return &Monitor{
 		sockMon:      &SocketMonitor{},
 		ifaceMon:     &NicMonitor{},
 		netstatMon:   &NetstatMonitor{},
 		datastore:    NewDatastore(epoch, path, periodOptions),
-		gossipServer: NewGossipServer(),
+		gossipServer: gs,
 	}, nil
 }
 

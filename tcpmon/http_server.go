@@ -29,8 +29,8 @@ func GetMember(gs *GossipServer) func(c *gin.Context) {
 			addrs = append(addrs, member.Address())
 		}
 		c.JSON(http.StatusOK, gin.H{
-			"member number":  len(gs.cluster.Members()),
-			"member address": addrs,
+			"len":     len(gs.cluster.Members()),
+			"members": addrs,
 		})
 	}
 }
