@@ -36,18 +36,12 @@ func New() (*Monitor, error) {
 		GCPeriod:      viper.GetDuration("gc-period"),
 	}
 
-	initialMembers := strings.FieldsFunc(viper.GetString("initial-members"), func(c rune) bool {
-		return unicode.IsSpace(c) || c == ','
-	})
-	gs := NewGossipServer()
-	gs.Join(initialMembers)
-
 	return &Monitor{
 		sockMon:      &SocketMonitor{},
 		ifaceMon:     &NicMonitor{},
 		netstatMon:   &NetstatMonitor{},
 		datastore:    NewDatastore(epoch, path, periodOptions),
-		gossipServer: gs,
+		gossipServer: NewGossipServer(),
 	}, nil
 }
 
@@ -93,6 +87,11 @@ func (mon *Monitor) Run(ctx context.Context, interval time.Duration) error {
 	tx := mon.datastore.Tx()
 
 	mon.startHttpServer(viper.GetString("listen"))
+
+	initialMembers := strings.FieldsFunc(viper.GetString("initial-members"), func(c rune) bool {
+		return unicode.IsSpace(c) || c == ','
+	})
+	mon.gossipServer.Join(initialMembers)
 
 	for {
 		select {
