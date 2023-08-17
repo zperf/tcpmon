@@ -14,10 +14,25 @@ import (
 
 func InitRoutes(router *gin.Engine, mon *Monitor) {
 	ds := mon.datastore
+	gs := mon.gossipServer
 	router.GET("/metrics", GetMetrics(ds))
 	router.GET("/metrics/:type", GetMetrics(ds))
 	router.GET("/backup", GetBackup(ds))
+	router.GET("/members", GetMember(gs))
 	pprof.Register(router)
+}
+
+func GetMember(gs *GossipServer) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		addrs := []string{}
+		for _, member := range gs.cluster.Members() {
+			addrs = append(addrs, member.Address())
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"member number":  len(gs.cluster.Members()),
+			"member address": addrs,
+		})
+	}
 }
 
 func GetBackup(ds *Datastore) func(c *gin.Context) {

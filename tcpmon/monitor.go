@@ -12,11 +12,12 @@ import (
 )
 
 type Monitor struct {
-	sockMon    *SocketMonitor
-	ifaceMon   *NicMonitor
-	netstatMon *NetstatMonitor
-	datastore  *Datastore
-	httpServer *http.Server
+	sockMon      *SocketMonitor
+	ifaceMon     *NicMonitor
+	netstatMon   *NetstatMonitor
+	datastore    *Datastore
+	httpServer   *http.Server
+	gossipServer *GossipServer
 }
 
 func New() (*Monitor, error) {
@@ -34,10 +35,11 @@ func New() (*Monitor, error) {
 	}
 
 	return &Monitor{
-		sockMon:    &SocketMonitor{},
-		ifaceMon:   &NicMonitor{},
-		netstatMon: &NetstatMonitor{},
-		datastore:  NewDatastore(epoch, path, periodOptions),
+		sockMon:      &SocketMonitor{},
+		ifaceMon:     &NicMonitor{},
+		netstatMon:   &NetstatMonitor{},
+		datastore:    NewDatastore(epoch, path, periodOptions),
+		gossipServer: NewGossipServer(),
 	}, nil
 }
 
