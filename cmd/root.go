@@ -101,6 +101,10 @@ func Execute() {
 	rootCmd.PersistentFlags().String("log-level", "Trace", "log level")
 	fatalIf(viper.BindPFlag("log-level", rootCmd.PersistentFlags().Lookup("log-level")))
 
+	// gossip
+	rootCmd.PersistentFlags().String("initial-members", "192.168.93.73, 192.168.93.190, 192.168.93.44", "initial gossip members address")
+	fatalIf(viper.BindPFlag("initial-members", rootCmd.PersistentFlags().Lookup("initial-members")))
+
 	err := viper.ReadInConfig()
 	if err != nil {
 		var expected viper.ConfigFileNotFoundError
