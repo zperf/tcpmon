@@ -11,14 +11,19 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const CheckRecordNumber = 3
-const PrefixTcpRecord = "tcp"
-const PrefixNicRecord = "nic"
-const PrefixNetRecord = "net"
-const PrefixSignalRecord = "sig"
+const MetricTypeCount = 3
+const PrefixTcpMetric = "tcp"
+const PrefixNicMetric = "nic"
+const PrefixNetMetric = "net"
 
-func ValidPrefix(s string) bool {
-	return s == PrefixNicRecord || s == PrefixTcpRecord || s == PrefixNetRecord
+// PrefixSignal inject a signal into storage. Only for testing
+const PrefixSignal = "sig"
+
+// PrefixMember is the member in the cluster
+const PrefixMember = "mbr"
+
+func ValidMetricPrefix(s string) bool {
+	return s == PrefixNicMetric || s == PrefixTcpMetric || s == PrefixNetMetric
 }
 
 func GetType(key string) string {
@@ -27,6 +32,10 @@ func GetType(key string) string {
 		return ""
 	}
 	return key[:p]
+}
+
+func KeyJoin(elems ...string) string {
+	return strings.Join(elems, "/")
 }
 
 func NewKey(kind string) string {
@@ -47,7 +56,7 @@ func (p KVPair) ToProto() (proto.Message, error) {
 
 	var msg proto.Message
 	switch kind {
-	case PrefixTcpRecord:
+	case PrefixTcpMetric:
 		var m TcpMetric
 		err := proto.Unmarshal(p.Value, &m)
 		if err != nil {
@@ -55,7 +64,7 @@ func (p KVPair) ToProto() (proto.Message, error) {
 		}
 		msg = &m
 
-	case PrefixNetRecord:
+	case PrefixNetMetric:
 		var m NetstatMetric
 		err := proto.Unmarshal(p.Value, &m)
 		if err != nil {
@@ -63,7 +72,7 @@ func (p KVPair) ToProto() (proto.Message, error) {
 		}
 		msg = &m
 
-	case PrefixNicRecord:
+	case PrefixNicMetric:
 		var m NicMetric
 		err := proto.Unmarshal(p.Value, &m)
 		if err != nil {

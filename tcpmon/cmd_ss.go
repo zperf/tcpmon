@@ -10,6 +10,7 @@ import (
 	"github.com/go-cmd/cmd"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
+	"github.com/umisama/go-regexpcache"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -118,6 +119,14 @@ func setMetric(m *SocketMetric, field string) {
 		}
 		m.RetransNow, _ = ParseUint32(valueStr[:q])
 		m.RetransTotal, _ = ParseUint32(valueStr[q+1:])
+		return
+	case "rwnd_limited":
+		// these two fields(rwnd_limited and sndbuf_limited) must be in ms, check the source of iproute2
+		// https://www.mail-archive.com/netdev@vger.kernel.org/msg140890.html
+		m.RwndLimited, _ = ParseUint32(getFirstNumberFromMess(valueStr))
+		return
+	case "sndbuf_limited":
+		m.SndbufLimited, _ = ParseUint32(getFirstNumberFromMess(valueStr))
 		return
 	}
 
@@ -231,53 +240,6 @@ func parseInfos(m *SocketMetric, s string) {
 }
 
 func ParseSSOutput(t *TcpMetric, out []string) {
-	for _, line := range out {
-		fields := strings.FieldsFunc(line, func(c rune) bool {
-			return c == ' '
-		})
-
-		s := SocketMetric{}
-		s.State = ToPbState(fields[0])
-		n, _ := ParseUint32(fields[1])
-		s.RecvQ = n
-		n, _ = ParseUint32(fields[2])
-		s.SendQ = n
-		s.LocalAddr = fields[3]
-		s.PeerAddr = fields[4]
-
-		var lastRateName string
-		for _, field := range fields[5:] {
-			switch field {
-			case "ts":
-				s.Ts = true
-			case "sack":
-				s.Sack = true
-			case "cubic":
-				s.Cubic = true
-			case "app_limited":
-				s.AppLimited = true
-			default:
-				// rate handling: pacing_rate, delivery_rate and send
-				if isRate(field) {
-					lastRateName = field
-				} else if lastRateName != "" && strings.HasSuffix(field, "bps") {
-					rate, _ := ParseUint64(strings.TrimSuffix(field, "bps"))
-					setRate(&s, lastRateName, rate)
-				} else if strings.Contains(field, ":(") {
-					// timers
-					parseInfos(&s, field)
-				} else {
-					// other metrics
-					setMetric(&s, field)
-				}
-			}
-		}
-
-		t.Sockets = append(t.Sockets, &s)
-	}
-}
-
-func ParseSSOutputWithoutParamO(t *TcpMetric, out []string) {
 	s := &SocketMetric{}
 	for _, line := range out {
 		fields := strings.FieldsFunc(line, func(c rune) bool {
@@ -367,7 +329,11 @@ func RunSS(now time.Time) (*TcpMetric, string, error) {
 		var t TcpMetric
 		t.Timestamp = timestamppb.New(now)
 		t.Type = MetricType_TCP
-		ParseSSOutputWithoutParamO(&t, st.Stdout)
+		ParseSSOutput(&t, st.Stdout)
 		return &t, strings.Join(st.Stdout, "\n"), nil
 	}
+}
+
+func getFirstNumberFromMess(s string) string {
+	return regexpcache.MustCompile(`[-]?\d[\d,]*[\.]?[\d{2}]*`).FindString(s)
 }

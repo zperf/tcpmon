@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -60,29 +61,38 @@ func InitLogger(config *LogConfig) {
 }
 
 func newRollingFile(config *LogConfig) io.Writer {
-	return &lumberjack.Logger{
+	logger := &lumberjack.Logger{
 		Filename:   path.Join(config.Directory, config.Filename),
 		MaxBackups: config.MaxBackups, // files
 		MaxSize:    config.MaxSize,    // megabytes
 		MaxAge:     config.MaxAge,     // days
 		LocalTime:  true,              // use local time, default UTC time
 	}
+	_ = logger.Rotate()
+	return logger
 }
 
-type BadgerZeroLogger struct{}
+type BadgerLogger struct{}
 
-func (b *BadgerZeroLogger) Errorf(format string, args ...interface{}) {
-	log.Error().Msgf(format, args...)
+func (b *BadgerLogger) Errorf(format string, args ...interface{}) {
+	log.Error().Str("mod", "badger").Msgf(strings.TrimSuffix(format, "\n"), args...)
 }
 
-func (b *BadgerZeroLogger) Warningf(format string, args ...interface{}) {
-	log.Warn().Msgf(format, args...)
+func (b *BadgerLogger) Warningf(format string, args ...interface{}) {
+	log.Warn().Str("mod", "badger").Msgf(strings.TrimSuffix(format, "\n"), args...)
 }
 
-func (b *BadgerZeroLogger) Infof(format string, args ...interface{}) {
-	log.Info().Msgf(format, args...)
+func (b *BadgerLogger) Infof(format string, args ...interface{}) {
+	log.Info().Str("mod", "badger").Msgf(strings.TrimSuffix(format, "\n"), args...)
 }
 
-func (b *BadgerZeroLogger) Debugf(format string, args ...interface{}) {
-	log.Debug().Msgf(format, args...)
+func (b *BadgerLogger) Debugf(format string, args ...interface{}) {
+	log.Debug().Str("mod", "badger").Msgf(strings.TrimSuffix(format, "\n"), args...)
+}
+
+type MemberlistLogger struct{}
+
+func (m *MemberlistLogger) Write(p []byte) (int, error) {
+	log.Info().Str("mod", "memberlist").Msg(strings.TrimSpace(string(p)))
+	return len(p), nil
 }

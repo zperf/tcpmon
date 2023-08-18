@@ -20,7 +20,7 @@ var startCmd = &cobra.Command{
 		level, _ := zerolog.ParseLevel(viper.GetString("log-level"))
 		config := tcpmon.LogConfig{
 			Level:                 level,
-			ConsoleLoggingEnabled: false,
+			ConsoleLoggingEnabled: viper.GetBool("verbose"),
 			FileLoggingEnabled:    true,
 			Directory:             viper.GetString("log-dir"),
 			Filename:              viper.GetString("log-filename"),
@@ -30,8 +30,10 @@ var startCmd = &cobra.Command{
 		}
 		tcpmon.InitLogger(&config)
 		if level == zerolog.NoLevel {
-			log.Warn().Str("level", viper.GetString("log-level")).Msg("invalid level, default to NoLevel")
+			log.Warn().Str("level", viper.GetString("log-level")).
+				Msg("invalid level, default to NoLevel")
 		}
+		log.Info().Str("configFile", viper.ConfigFileUsed()).Str("logDir", viper.GetString("log-dir")).Msg("Config loaded")
 
 		m, err := tcpmon.New()
 		if err != nil {
@@ -46,4 +48,12 @@ var startCmd = &cobra.Command{
 			log.Fatal().Err(err).Msg("failed to run")
 		}
 	},
+}
+
+func init() {
+	rootCmd.AddCommand(startCmd)
+
+	flag := "listen"
+	startCmd.Flags().StringP(flag, "l", "0.0.0.0:6789", "HTTP server listening at this address")
+	fatalIf(viper.BindPFlag(flag, startCmd.Flags().Lookup(flag)))
 }

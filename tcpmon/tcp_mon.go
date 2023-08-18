@@ -22,7 +22,7 @@ func (m *SocketMonitor) Collect(now time.Time) (*KVPair, error) {
 	}
 
 	return &KVPair{
-		Key:   fmt.Sprintf("%s/%v/", PrefixTcpRecord, now.UnixMilli()),
+		Key:   fmt.Sprintf("%s/%v/", PrefixTcpMetric, now.UnixMilli()),
 		Value: val,
 	}, nil
 }

@@ -6,6 +6,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 )
@@ -76,4 +77,12 @@ var reFilenameFilter = regexp.MustCompile(`[\\/:*?"<>|]`)
 
 func SafeFilename(filename string) string {
 	return reFilenameFilter.ReplaceAllString(filename, "_")
+}
+
+func GetIpFromAddress(s string) string {
+	p := strings.Index(s, ":")
+	if p == -1 {
+		return s
+	}
+	return s[:p]
 }

@@ -21,16 +21,16 @@ type Datastore struct {
 	tickerGC      *time.Ticker
 }
 
-type PeriodOption struct {
-	MaxSize       int
-	DeleteSize    int
-	ReclaimPeriod time.Duration
-	GCPeriod      time.Duration
+type DataStoreConfig struct {
+	ExpectedKeyCount int
+	ReclaimBatch     int
+	ReclaimInterval  time.Duration
+	GcInterval       time.Duration
 }
 
-func NewDatastore(initialEpoch uint64, path string, periodOptions *PeriodOption) *Datastore {
+func NewDatastore(initialEpoch uint64, path string, config *DataStoreConfig) *Datastore {
 	options := badger.DefaultOptions(path).
-		WithLogger(&BadgerZeroLogger{}).
+		WithLogger(&BadgerLogger{}).
 		WithInMemory(false).
 		WithCompression(boptions.ZSTD).
 		WithNumGoroutines(2).
@@ -44,21 +44,21 @@ func NewDatastore(initialEpoch uint64, path string, periodOptions *PeriodOption)
 		log.Fatal().Err(errors.WithStack(err)).Msg("failed open database")
 	}
 
-	log.Info().Uint64("initialEpoch", initialEpoch).Msg("datastore created")
+	log.Info().Uint64("initialEpoch", initialEpoch).Msg("Created")
 	tx := make(chan *KVPair, 256)
 
 	d := &Datastore{
 		done:          make(chan struct{}),
 		tx:            tx,
 		db:            db,
-		tickerReclaim: time.NewTicker(periodOptions.ReclaimPeriod),
-		tickerGC:      time.NewTicker(periodOptions.GCPeriod),
+		tickerReclaim: time.NewTicker(config.ReclaimInterval),
+		tickerGC:      time.NewTicker(config.GcInterval),
 	}
 	d.wait.Add(3)
 
 	go d.writer(initialEpoch)
-	go d.periodicReclaim(periodOptions.MaxSize, periodOptions.DeleteSize)
-	go d.periodicGC()
+	go d.autoReclaim(config.ExpectedKeyCount, config.ReclaimBatch)
+	go d.autoGC()
 	return d
 }
 
@@ -74,7 +74,7 @@ func (d *Datastore) Close() {
 }
 
 func (d *Datastore) writer(initialEpoch uint64) {
-	log.Info().Msg("datastore writer started")
+	log.Info().Msg("Writer started")
 	defer func(wait *sync.WaitGroup, db *badger.DB) {
 		err := db.Close()
 		if err != nil {
@@ -104,7 +104,7 @@ func (d *Datastore) writer(initialEpoch uint64) {
 		epoch++
 
 		var err error
-		if !strings.HasPrefix(key, PrefixSignalRecord) {
+		if !strings.HasPrefix(key, PrefixSignal) {
 			// TODO(fanyang) batch write txn
 			err = d.db.Update(func(txn *badger.Txn) error {
 				return txn.Set([]byte(req.Key), req.Value)
@@ -140,7 +140,7 @@ func (d *Datastore) GetSize(prefix []byte) int {
 	return size
 }
 
-func (d *Datastore) checkDeletePrefix(prefix []byte, maxSize, deleteSize int) {
+func (d *Datastore) checkDeletePrefix(prefix []byte, maxSize int, deleteSize int) {
 	size := d.GetSize(prefix)
 	if size <= maxSize {
 		return
@@ -172,35 +172,31 @@ func (d *Datastore) checkDeletePrefix(prefix []byte, maxSize, deleteSize int) {
 		return nil
 	})
 	if err != nil {
-		log.Warn().Err(err).Msg("failed to update db")
+		log.Warn().Err(err).Msg("failed to delete")
 	}
 }
 
-func (d *Datastore) periodicReclaim(maxSize, deleteSize int) {
-	log.Info().Msg("datastore periodic delete started")
+func (d *Datastore) autoReclaim(maxSize, deleteSize int) {
 	defer func(wait *sync.WaitGroup) {
 		wait.Done()
-		log.Info().Msg("datastore periodic delete exited")
 	}(&d.wait)
 
-	maxSize, deleteSize = maxSize/CheckRecordNumber, deleteSize/CheckRecordNumber
+	maxSize, deleteSize = maxSize/MetricTypeCount, deleteSize/MetricTypeCount
 	for {
 		select {
 		case <-d.done:
 			return
 		case <-d.tickerReclaim.C:
-			d.checkDeletePrefix([]byte(PrefixNetRecord), maxSize, deleteSize)
-			d.checkDeletePrefix([]byte(PrefixNicRecord), maxSize, deleteSize)
-			d.checkDeletePrefix([]byte(PrefixTcpRecord), maxSize, deleteSize)
+			d.checkDeletePrefix([]byte(PrefixNetMetric), maxSize, deleteSize)
+			d.checkDeletePrefix([]byte(PrefixNicMetric), maxSize, deleteSize)
+			d.checkDeletePrefix([]byte(PrefixTcpMetric), maxSize, deleteSize)
 		}
 	}
 }
 
-func (d *Datastore) periodicGC() {
-	log.Info().Msg("datastore periodic GC started")
+func (d *Datastore) autoGC() {
 	defer func(wait *sync.WaitGroup) {
 		wait.Done()
-		log.Info().Msg("datastore periodic GC exited")
 	}(&d.wait)
 
 	for {

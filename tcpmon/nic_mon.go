@@ -22,7 +22,7 @@ func (m *NicMonitor) Collect(now time.Time) (*KVPair, error) {
 	}
 
 	return &KVPair{
-		Key:   fmt.Sprintf("%s/%v/", PrefixNicRecord, now.UnixMilli()),
+		Key:   fmt.Sprintf("%s/%v/", PrefixNicMetric, now.UnixMilli()),
 		Value: val,
 	}, nil
 }

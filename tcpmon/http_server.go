@@ -3,36 +3,24 @@ package tcpmon
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 )
 
-func InitRoutes(router *gin.Engine, mon *Monitor) {
-	ds := mon.datastore
-	gs := mon.gossipServer
-	router.GET("/metrics", GetMetrics(ds))
-	router.GET("/metrics/:type", GetMetrics(ds))
-	router.GET("/backup", GetBackup(ds))
-	router.GET("/members", GetMember(gs))
+func RegisterRoutes(router *gin.Engine, mon *Monitor) {
+	router.GET("/metrics", GetMetrics(mon.datastore))
+	//router.GET("/metrics/:type", GetMetrics(mon.datastore))
+	router.GET("/metrics/*name", GetMetric(mon.datastore))
+	router.GET("/members", GetMember(mon.quorum))
+	router.POST("/members", JoinCluster(mon.quorum))
+	router.POST("/members/leave", LeaveCluster(mon.quorum))
+	router.GET("/backup", GetBackup(mon.datastore))
 	pprof.Register(router)
-}
-
-func GetMember(gs *GossipServer) func(c *gin.Context) {
-	return func(c *gin.Context) {
-		addrs := []string{}
-		for _, member := range gs.cluster.Members() {
-			addrs = append(addrs, member.Address())
-		}
-		c.JSON(http.StatusOK, gin.H{
-			"len":     len(gs.cluster.Members()),
-			"members": addrs,
-		})
-	}
 }
 
 func GetBackup(ds *Datastore) func(c *gin.Context) {
@@ -50,10 +38,22 @@ func GetBackup(ds *Datastore) func(c *gin.Context) {
 	}
 }
 
+func GetMetric(ds *Datastore) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		metricName := c.Param("name")
+		p, err := ds.Get(strings.TrimPrefix(metricName, "/"))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, ErrorJSON(err))
+			return
+		}
+		c.JSON(http.StatusOK, p.ToJSON())
+	}
+}
+
 func GetMetrics(ds *Datastore) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		kind := c.Param("type")
-		if !ValidPrefix(kind) && kind != "" {
+		if !ValidMetricPrefix(kind) && kind != "" {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": errors.Newf("invalid type: %v", kind)})
 			return
 		}
@@ -85,26 +85,24 @@ func GetMetrics(ds *Datastore) func(c *gin.Context) {
 	}
 }
 
-func (mon *Monitor) startHttpServer(addr string) {
-	verbose := viper.GetBool("verbose")
-	if !verbose {
-		gin.SetMode(gin.ReleaseMode)
-	}
+func (m *Monitor) startHttpServer(addr string) {
+	gin.SetMode(gin.ReleaseMode)
 
 	engine := gin.New()
 	engine.Use(httpLogger())
 	engine.Use(gin.Recovery())
-	InitRoutes(engine, mon)
+	RegisterRoutes(engine, m)
 
-	mon.httpServer = &http.Server{
+	m.httpServer = &http.Server{
 		Addr:    addr,
 		Handler: engine,
 	}
+	log.Info().Str("addr", addr).Msg("HTTP server started")
 
 	go func(srv *http.Server) {
 		err := srv.ListenAndServe()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatal().Err(err).Msg("failed to listen and serve")
+			log.Fatal().Err(errors.WithStack(err)).Msg("Serve HTTP service failed")
 		}
-	}(mon.httpServer)
+	}(m.httpServer)
 }

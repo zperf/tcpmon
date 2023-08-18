@@ -82,3 +82,26 @@ func (d *Datastore) GetKeys() ([]string, error) {
 func (d *Datastore) Backup(w io.Writer, since uint64) (uint64, error) {
 	return d.db.Backup(w, since)
 }
+
+func (d *Datastore) Get(key string) (*KVPair, error) {
+	p := &KVPair{
+		Key: key,
+	}
+	err := d.db.View(func(txn *badger.Txn) error {
+		it, err := txn.Get([]byte(key))
+		if err != nil {
+			return err
+		}
+
+		p.Value, err = it.ValueCopy(nil)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return p, nil
+}
