@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
-	"fmt"
 	"os"
 
 	"github.com/dgraph-io/badger/v4"
@@ -14,120 +12,52 @@ import (
 )
 
 var restoreCmd = &cobra.Command{
-	Use:   "restore",
-	Short: "restore backup file",
+	Use:   "restore FILE",
+	Short: "Restore backup file",
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		// open input file
-		inputFile, err := os.Open(viper.GetString("input"))
-		if err != nil {
-			log.Err(err).Msg("cannot open input file")
-			return
-		}
-		defer inputFile.Close()
+		src := args[0]
+		output := viper.GetString("output")
+		force := viper.GetBool("force")
+		needPrint := viper.GetBool("print")
 
-		// load backup to load-db
-		loadDBPath := viper.GetString("load-db")
-		if loadDBPath != "" {
-			opts := badger.DefaultOptions(loadDBPath)
-			db, err := badger.Open(opts)
+		isEmpty, err := IsDirEmpty(output)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Check output dir failed")
+		}
+
+		if force || isEmpty {
+			db, err := badger.Open(badger.DefaultOptions(output).
+				WithLogger(&tcpmon.BadgerLogger{}).
+				WithCompactL0OnClose(true))
 			if err != nil {
-				log.Err(err).Msg("cannot open load-db")
-				return
+				log.Fatal().Err(err).Msg("Open db for write failed")
 			}
 			defer db.Close()
-			err = db.Load(inputFile, 32)
+
+			fh, err := os.Open(src)
 			if err != nil {
-				log.Err(err).Msg("error load backup to load-db")
-				return
+				log.Fatal().Err(err).Msg("Open backup file failed")
 			}
-			return
-		}
 
-		// open default-db
-		opts := badger.DefaultOptions(viper.GetString("default-db"))
-		db, err := badger.Open(opts)
-		if err != nil {
-			log.Err(err).Msg("cannot open default-db")
-			return
-		}
-		defer db.Close()
-		// clear default-db
-		err = db.DropAll()
-		if err != nil {
-			log.Err(err).Msg("cannot clear default-db")
-			return
-		}
-		// load backup to default-db
-		err = db.Load(inputFile, 32)
-		if err != nil {
-			log.Err(err).Msg("error load backup to default-db")
-			return
-		}
-
-		// open output file
-		outputFilePath := viper.GetString("output")
-		var encoder *json.Encoder
-		if outputFilePath != "" {
-			OutputFile, err := os.OpenFile(outputFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+			err = db.Load(fh, 256)
 			if err != nil {
-				log.Err(err).Msg("cannot open output file")
-				return
+				log.Fatal().Err(err).Str("backupFile", src).Str("Output", output).Msg("Restore failed")
 			}
-			defer OutputFile.Close()
-			encoder = json.NewEncoder(OutputFile)
-		}
 
-		// parse default-db
-		err = db.View(func(txn *badger.Txn) error {
-			opts := badger.DefaultIteratorOptions
-			prefix := viper.GetString("prefix")
-			if prefix != "" {
-				opts.Prefix = []byte(prefix)
+			if needPrint {
+				DoPrint(db, viper.GetString("prefix"), viper.GetBool("reversed"), nil)
 			}
-			it := txn.NewIterator(opts)
-			defer it.Close()
-
-			for it.Rewind(); it.Valid(); it.Next() {
-				key := string(it.Item().KeyCopy(nil))
-				value, err := it.Item().ValueCopy(nil)
-				if err != nil {
-					log.Warn().Err(err).Str("Key", key).Msg("fail to get value")
-					continue
-				}
-				kvp := tcpmon.KVPair{
-					Key:   key,
-					Value: value,
-				}
-				msg, _ := kvp.ToProto()
-				if encoder != nil {
-					err = encoder.Encode(msg)
-					if err != nil {
-						log.Warn().Err(err).Str("Key", key).Msg("fail to write data to output file")
-						continue
-					}
-				} else {
-					fmt.Printf("{%v}\n\n", msg)
-				}
-			}
-			return nil
-		})
-		if err != nil {
-			log.Err(err).Msg("error parse default-db")
 		}
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(restoreCmd)
+	restoreCmd.Flags().StringP("output", "O", ".", "output database path")
+	restoreCmd.Flags().BoolP("force", "f", false, "force restore, may overwrite files")
+	restoreCmd.Flags().BoolP("print", "p", false, "print database as JSON after restore")
+	addPrintFlags(restoreCmd)
 
-	restoreCmd.Flags().String("default-db", "/tmp/lap/defaultDB", "default db path for parse db data")
-	fatalIf(viper.BindPFlag("default-db", restoreCmd.Flags().Lookup("default-db")))
-	restoreCmd.Flags().String("load-db", "", "db path for recovering from backup, empty for not recovering")
-	fatalIf(viper.BindPFlag("load-db", restoreCmd.Flags().Lookup("load-db")))
-	restoreCmd.Flags().String("input", "/tmp/lap/input.txt", "input backup file")
-	fatalIf(viper.BindPFlag("input", restoreCmd.Flags().Lookup("input")))
-	restoreCmd.Flags().String("output", "", "output json format file, empty for stdout")
-	fatalIf(viper.BindPFlag("output", restoreCmd.Flags().Lookup("output")))
-	restoreCmd.Flags().String("prefix", "", "key prefix, empty for all key")
-	fatalIf(viper.BindPFlag("prefix", restoreCmd.Flags().Lookup("prefix")))
+	fatalIf(viper.BindPFlags(restoreCmd.Flags()))
 }

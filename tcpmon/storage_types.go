@@ -107,3 +107,13 @@ func (p KVPair) ToJSON() map[string]any {
 
 	return h
 }
+
+func (p KVPair) ToJSONString() string {
+	h := p.ToJSON()
+	s, err := json.Marshal(h)
+	if err != nil {
+		return fmt.Sprintf(`{"error":"%s"}`, err.Error())
+	}
+
+	return string(s)
+}
