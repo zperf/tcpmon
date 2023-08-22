@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/gin-contrib/pprof"
@@ -19,18 +18,18 @@ func RegisterRoutes(router *gin.Engine, mon *Monitor) {
 	router.GET("/members", GetMember(mon.quorum))
 	router.POST("/members", JoinCluster(mon.quorum))
 	router.POST("/members/leave", LeaveCluster(mon.quorum))
-	router.GET("/backup", GetBackup(mon.datastore))
+	router.GET("/backup", GetBackup(mon))
 	pprof.Register(router)
 }
 
-func GetBackup(ds *Datastore) func(c *gin.Context) {
+func GetBackup(mon *Monitor) func(c *gin.Context) {
 	hostname := Hostname()
-	filename := SafeFilename(fmt.Sprintf("tcpmon-dump-%s-%s.bak", hostname, time.Now().Format(time.DateOnly)))
+	filename := SafeFilename(fmt.Sprintf("tcpmon-dump-%s-%s.bak", hostname, mon.quorum.MyIP()))
 
 	return func(c *gin.Context) {
 		c.Writer.Header().Set("Content-Type", "application/octet-stream")
 		c.Writer.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
-		_, err := ds.Backup(c.Writer, 0)
+		_, err := mon.datastore.Backup(c.Writer, 0)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, ErrorJSON(err))
 			return
