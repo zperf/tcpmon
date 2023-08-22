@@ -3,7 +3,7 @@ ROOT_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 all: build
 
 .PHONY: build
-build:
+build: build-linux
 	go build -o bin/tcpmon main.go
 
 .PHONY: build-linux
