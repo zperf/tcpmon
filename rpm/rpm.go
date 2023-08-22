@@ -30,7 +30,7 @@ func BuildRPM(arch string) {
 		Release:    "1.el7",
 		OS:         "linux",
 		Arch:       arch,
-		Summary:    "Tcpmon - a portable netowrk monitor",
+		Summary:    "Tcpmon - a portable network monitor",
 		Licence:    "MIT",
 		Vendor:     "SMTX",
 		Packager:   "SMTX",
