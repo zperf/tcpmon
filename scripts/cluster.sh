@@ -21,3 +21,6 @@ mkdir -p data/tcpmon3/log
 docker run --name tcpmon3 -d --net=tcpmon -v "$(pwd)/bin:$(pwd)/bin" -w "$(pwd)/bin" \
 -v "$(pwd)/data/tcpmon3/log:/tmp/tcpmon/log" \
 "tcpmon:runtime$IMAGE_DISTRO" ./tcpmon-linux start
+
+docker exec -t tcpmon1 bash -c "curl -X POST -d 192.168.228.3:6790 http://192.168.228.2:6789/members"
+docker exec -t tcpmon1 bash -c "curl -X POST -d 192.168.228.4:6790 http://192.168.228.2:6789/members"
