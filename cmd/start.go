@@ -96,6 +96,7 @@ var startTestCmd = &cobra.Command{
 		fmt.Printf("%s %s\n", viper.GetString("cmd-ss"), viper.GetString("cmd-ss-arg"))
 		fmt.Printf("%s %s\n", viper.GetString("cmd-ss2"), viper.GetString("cmd-ss-arg"))
 		fmt.Printf("%s %s\n", viper.GetString("cmd-ifconfig"), viper.GetString("cmd-ifconfig-arg"))
+		fmt.Printf("%s %s\n", viper.GetString("cmd-ifconfig2"), viper.GetString("cmd-ifconfig-arg"))
 		fmt.Printf("%s %s\n", viper.GetString("cmd-netstat"), viper.GetString("cmd-netstat-arg"))
 		fmt.Println("echo \"$?\"")
 	},
