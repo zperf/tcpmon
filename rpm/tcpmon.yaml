@@ -1,8 +1,11 @@
 cmd-ifconfig: /usr/bin/ifconfig
+cmd-ifconfig-arg: ""
+cmd-ifconfig2: /usr/sbin/ifconfig
 cmd-netstat: /usr/bin/netstat
 cmd-netstat-arg: -s
 cmd-ss: /usr/bin/ss
 cmd-ss-arg: -4ntipmoHna
+cmd-ss2: /usr/sbin/ss
 cmd-timeout: 1s
 collect-interval: 1s
 db: /var/lib/tcpmon
@@ -14,6 +17,7 @@ log-filename: tcpmon.log
 log-level: info
 log-max-count: 5
 log-max-size: 10
-reclaim-delete-batch: 2000
+quorum-port: 6790
+reclaim-batch: 2000
 reclaim-interval: 3m0s
 verbose: false
