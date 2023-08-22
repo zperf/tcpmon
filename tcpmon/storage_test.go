@@ -15,14 +15,13 @@ import (
 
 type StorageTestSuite struct {
 	suite.Suite
-	path   string
 	config *DataStoreConfig
 }
 
 func TestStorage(t *testing.T) {
 	s := &StorageTestSuite{
-		path: "/tmp/tcpmon-test",
 		config: &DataStoreConfig{
+			Path:            "/tmp/tcpmon-test",
 			MaxSize:         10000,
 			ReclaimBatch:    100000,
 			ReclaimInterval: 2 * time.Second,
@@ -33,7 +32,7 @@ func TestStorage(t *testing.T) {
 }
 
 func (s *StorageTestSuite) SetupTest() {
-	err := os.RemoveAll(s.path)
+	err := os.RemoveAll(s.config.Path)
 	s.Assert().NoError(err)
 }
 
