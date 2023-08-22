@@ -13,7 +13,6 @@ import (
 
 func RegisterRoutes(router *gin.Engine, mon *Monitor) {
 	router.GET("/metrics", GetMetrics(mon.datastore))
-	//router.GET("/metrics/:type", GetMetrics(mon.datastore))
 	router.GET("/metrics/*name", GetMetric(mon.datastore))
 	router.GET("/members", GetMember(mon.quorum))
 	router.POST("/members", JoinCluster(mon.quorum))
@@ -51,7 +50,7 @@ func GetMetric(ds *DataStore) func(c *gin.Context) {
 
 func GetMetrics(ds *DataStore) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		kind := c.Param("type")
+		kind := c.Query("type")
 		if !ValidMetricPrefix(kind) && kind != "" {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": errors.Newf("invalid type: %v", kind)})
 			return
@@ -69,17 +68,20 @@ func GetMetrics(ds *DataStore) func(c *gin.Context) {
 			})
 		} else {
 			// with prefix
-			pairs, err := ds.GetPrefix([]byte(kind), 10, true)
+			pairs, err := ds.GetPrefix([]byte(kind), 0, false)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, ErrorJSON(errors.WithStack(err)))
 				return
 			}
 
-			buf := make([]gin.H, 0)
+			keys := make([]string, 0)
 			for _, p := range pairs {
-				buf = append(buf, p.ToJSON())
+				keys = append(keys, p.Key)
 			}
-			c.JSON(http.StatusOK, buf)
+			c.JSON(http.StatusOK, gin.H{
+				"len":  len(keys),
+				"keys": keys,
+			})
 		}
 	}
 }
