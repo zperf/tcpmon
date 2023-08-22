@@ -97,3 +97,18 @@ func ParseIpAddr(s string) *IpAddr {
 func (a *IpAddr) String() string {
 	return fmt.Sprintf("%s:%d", a.Address, a.Port)
 }
+
+func FileExists(s string) (bool, error) {
+	_, err := os.Stat(s)
+	if err != nil {
+		if os.IsNotExist(err) {
+			err = nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func splitSpace(c rune) bool {
+	return c == ' '
+}

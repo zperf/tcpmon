@@ -9,18 +9,10 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/go-cmd/cmd"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 	"github.com/umisama/go-regexpcache"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type ssOption struct {
-	Path    string
-	Timeout time.Duration
-	Arg     string
-}
-
-var ssOptions *ssOption
 var socketStateMap map[string]SocketState
 
 func init() {
@@ -309,17 +301,9 @@ func ParseSSOutput(t *TcpMetric, out []string) {
 	}
 }
 
-func RunSS(now time.Time) (*TcpMetric, string, error) {
-	if ssOptions == nil {
-		ssOptions = &ssOption{
-			Path:    viper.GetString("ss"),
-			Timeout: viper.GetDuration("command-timeout"),
-			Arg:     viper.GetString("ss-arg"),
-		}
-	}
-
-	c := cmd.NewCmd(ssOptions.Path, ssOptions.Arg)
-	ctx, cancel := context.WithTimeout(context.Background(), ssOptions.Timeout)
+func (m *SocketMonitor) RunSS(now time.Time) (*TcpMetric, string, error) {
+	c := cmd.NewCmd(m.config.PathSS, m.config.ArgSS)
+	ctx, cancel := context.WithTimeout(context.Background(), m.config.Timeout)
 	defer cancel()
 
 	select {

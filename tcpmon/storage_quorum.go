@@ -8,11 +8,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func (d *Datastore) GetMembers() ([]KVPair, error) {
+func (d *DataStore) GetMembers() ([]KVPair, error) {
 	return d.GetPrefix([]byte(PrefixMember), 0, false)
 }
 
-func (d *Datastore) GetMemberAddressList() ([]string, error) {
+func (d *DataStore) GetMemberAddressList() ([]string, error) {
 	r := make([]string, 0)
 	members, err := d.GetMembers()
 	if err != nil {
@@ -25,25 +25,25 @@ func (d *Datastore) GetMemberAddressList() ([]string, error) {
 	return r, nil
 }
 
-func (d *Datastore) AddMember(member string, buf []byte) error {
+func (d *DataStore) AddMember(member string, buf []byte) error {
 	return d.db.Update(func(txn *badger.Txn) error {
 		return txn.Set([]byte(KeyJoin(PrefixMember, member)), buf)
 	})
 }
 
-func (d *Datastore) DeleteMember(member string) error {
+func (d *DataStore) DeleteMember(member string) error {
 	return d.db.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(KeyJoin(PrefixMember, member)))
 	})
 }
 
-func (d *Datastore) UpdateMember(member string, buf []byte) error {
+func (d *DataStore) UpdateMember(member string, buf []byte) error {
 	return d.db.Update(func(txn *badger.Txn) error {
 		return txn.Set([]byte(KeyJoin(PrefixMember, member)), buf)
 	})
 }
 
-func (d *Datastore) GetMemberMeta(member string) (map[string]any, error) {
+func (d *DataStore) GetMemberMeta(member string) (map[string]any, error) {
 	var buf []byte
 
 	err := d.db.View(func(txn *badger.Txn) error {

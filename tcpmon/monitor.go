@@ -15,7 +15,7 @@ type Monitor struct {
 	sockMon    *SocketMonitor
 	ifaceMon   *NicMonitor
 	netstatMon *NetstatMonitor
-	datastore  *Datastore
+	datastore  *DataStore
 	httpServer *http.Server
 	quorum     *Quorum
 }
@@ -34,12 +34,14 @@ func New(config MonitorConfig) (*Monitor, error) {
 		return nil, errors.Wrap(err, "failed to generate initial epoch")
 	}
 
-	ds := NewDatastore(epoch, &config.DataStoreConfig)
+	ds := NewDataStore(epoch, &config.DataStoreConfig)
+	cmdConfig := NewCmdConfig()
+
 	return &Monitor{
 		config:     config,
-		sockMon:    &SocketMonitor{},
-		ifaceMon:   &NicMonitor{},
-		netstatMon: &NetstatMonitor{},
+		sockMon:    &SocketMonitor{cmdConfig},
+		ifaceMon:   &NicMonitor{cmdConfig},
+		netstatMon: &NetstatMonitor{cmdConfig},
 		datastore:  ds,
 		quorum:     NewQuorum(ds, &config),
 	}, nil

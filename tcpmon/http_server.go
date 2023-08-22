@@ -37,7 +37,7 @@ func GetBackup(mon *Monitor) func(c *gin.Context) {
 	}
 }
 
-func GetMetric(ds *Datastore) func(c *gin.Context) {
+func GetMetric(ds *DataStore) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		metricName := c.Param("name")
 		p, err := ds.Get(strings.TrimPrefix(metricName, "/"))
@@ -49,7 +49,7 @@ func GetMetric(ds *Datastore) func(c *gin.Context) {
 	}
 }
 
-func GetMetrics(ds *Datastore) func(c *gin.Context) {
+func GetMetrics(ds *DataStore) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		kind := c.Param("type")
 		if !ValidMetricPrefix(kind) && kind != "" {

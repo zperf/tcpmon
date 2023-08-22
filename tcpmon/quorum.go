@@ -12,10 +12,10 @@ import (
 
 type Quorum struct {
 	mlist *memberlist.Memberlist
-	ds    *Datastore
+	ds    *DataStore
 }
 
-func NewQuorum(ds *Datastore, mconfig *MonitorConfig) *Quorum {
+func NewQuorum(ds *DataStore, mconfig *MonitorConfig) *Quorum {
 	q := &Quorum{
 		ds: ds,
 	}

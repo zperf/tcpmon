@@ -58,12 +58,12 @@ func GetPrefix(db *badger.DB, prefix []byte, maxCount int, hasValue bool) ([]KVP
 	return r, nil
 }
 
-func (d *Datastore) GetPrefix(prefix []byte, maxCount int, hasValue bool) ([]KVPair, error) {
+func (d *DataStore) GetPrefix(prefix []byte, maxCount int, hasValue bool) ([]KVPair, error) {
 	return GetPrefix(d.db, prefix, maxCount, hasValue)
 }
 
 // GetKeys returns all keys in the database
-func (d *Datastore) GetKeys() ([]string, error) {
+func (d *DataStore) GetKeys() ([]string, error) {
 	keys := make([]string, 0)
 	err := d.db.View(func(txn *badger.Txn) error {
 		options := badger.DefaultIteratorOptions
@@ -83,11 +83,11 @@ func (d *Datastore) GetKeys() ([]string, error) {
 	return keys, nil
 }
 
-func (d *Datastore) Backup(w io.Writer, since uint64) (uint64, error) {
+func (d *DataStore) Backup(w io.Writer, since uint64) (uint64, error) {
 	return d.db.Backup(w, since)
 }
 
-func (d *Datastore) Get(key string) (*KVPair, error) {
+func (d *DataStore) Get(key string) (*KVPair, error) {
 	p := &KVPair{
 		Key: key,
 	}

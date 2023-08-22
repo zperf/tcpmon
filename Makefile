@@ -44,7 +44,7 @@ clean:
 
 .PHONY: docker
 docker:
-	$(MAKE) -C docker
+	$(MAKE) -C docker builder
 
 # list all tests
 .PHONY: tests

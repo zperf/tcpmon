@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type Datastore struct {
+type DataStore struct {
 	tx            chan *KVPair
 	done          chan struct{}
 	db            *badger.DB
@@ -29,7 +29,24 @@ type DataStoreConfig struct {
 	GcInterval      time.Duration
 }
 
-func NewDatastore(initialEpoch uint64, config *DataStoreConfig) *Datastore {
+func (c *DataStoreConfig) WithDefault() {
+	if c.MaxSize == 0 {
+		c.MaxSize = 30000
+	}
+	if c.ReclaimBatch == 0 {
+		c.ReclaimBatch = 2000
+	}
+	if c.ReclaimInterval == 0 {
+		c.ReclaimInterval = time.Minute
+	}
+	if c.GcInterval == 0 {
+		c.GcInterval = 5 * time.Minute
+	}
+}
+
+func NewDataStore(initialEpoch uint64, config *DataStoreConfig) *DataStore {
+	config.WithDefault()
+
 	options := badger.DefaultOptions(config.Path).
 		WithLogger(NewBadgerLogger()).
 		WithInMemory(false).
@@ -48,7 +65,7 @@ func NewDatastore(initialEpoch uint64, config *DataStoreConfig) *Datastore {
 	log.Info().Uint64("initialEpoch", initialEpoch).Msg("Created")
 	tx := make(chan *KVPair, 256)
 
-	d := &Datastore{
+	d := &DataStore{
 		done:          make(chan struct{}),
 		tx:            tx,
 		db:            db,
@@ -64,17 +81,17 @@ func NewDatastore(initialEpoch uint64, config *DataStoreConfig) *Datastore {
 }
 
 // Tx returns a send-only channel
-func (d *Datastore) Tx() chan<- *KVPair {
+func (d *DataStore) Tx() chan<- *KVPair {
 	return d.tx
 }
 
 // Close the datastore and shutdown
-func (d *Datastore) Close() {
+func (d *DataStore) Close() {
 	close(d.done)
 	d.wait.Wait()
 }
 
-func (d *Datastore) writer(initialEpoch uint64) {
+func (d *DataStore) writer(initialEpoch uint64) {
 	log.Info().Msg("Writer started")
 	defer func(wait *sync.WaitGroup, db *badger.DB) {
 		err := db.Close()
@@ -120,7 +137,7 @@ func (d *Datastore) writer(initialEpoch uint64) {
 	}
 }
 
-func (d *Datastore) GetSize(prefix []byte) int {
+func (d *DataStore) GetSize(prefix []byte) int {
 	size := 0
 	err := d.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
@@ -141,7 +158,7 @@ func (d *Datastore) GetSize(prefix []byte) int {
 	return size
 }
 
-func (d *Datastore) checkDeletePrefix(prefix []byte, maxSize int, deleteSize int) {
+func (d *DataStore) checkDeletePrefix(prefix []byte, maxSize int, deleteSize int) {
 	size := d.GetSize(prefix)
 	if size <= maxSize {
 		return
@@ -177,7 +194,7 @@ func (d *Datastore) checkDeletePrefix(prefix []byte, maxSize int, deleteSize int
 	}
 }
 
-func (d *Datastore) autoReclaim(maxSize, deleteSize int) {
+func (d *DataStore) autoReclaim(maxSize, deleteSize int) {
 	defer func(wait *sync.WaitGroup) {
 		wait.Done()
 	}(&d.wait)
@@ -195,7 +212,7 @@ func (d *Datastore) autoReclaim(maxSize, deleteSize int) {
 	}
 }
 
-func (d *Datastore) autoGC() {
+func (d *DataStore) autoGC() {
 	defer func(wait *sync.WaitGroup) {
 		wait.Done()
 	}(&d.wait)

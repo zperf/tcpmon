@@ -8,10 +8,12 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type NetstatMonitor struct{}
+type SocketMonitor struct {
+	config *CmdConfig
+}
 
-func (m *NetstatMonitor) Collect(now time.Time) (*KVPair, error) {
-	r, _, err := RunNetstat(now)
+func (m *SocketMonitor) Collect(now time.Time) (*KVPair, error) {
+	r, _, err := m.RunSS(now)
 	if err != nil {
 		return nil, err
 	}
@@ -22,7 +24,7 @@ func (m *NetstatMonitor) Collect(now time.Time) (*KVPair, error) {
 	}
 
 	return &KVPair{
-		Key:   fmt.Sprintf("%s/%v/", PrefixNetMetric, now.UnixMilli()),
+		Key:   fmt.Sprintf("%s/%v/", PrefixTcpMetric, now.UnixMilli()),
 		Value: val,
 	}, nil
 }

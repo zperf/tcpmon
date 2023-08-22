@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"os/signal"
 	"syscall"
 	"time"
@@ -85,6 +86,21 @@ var startCmd = &cobra.Command{
 	},
 }
 
+var startTestCmd = &cobra.Command{
+	Use:     "test",
+	Short:   "Test this machines can run daemon",
+	Example: `  tcpmon-linux start test > test.sh; bash test.sh`,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("#!/usr/bin/env bash")
+		fmt.Println("set -x")
+		fmt.Printf("%s %s\n", viper.GetString("cmd-ss"), viper.GetString("cmd-ss-arg"))
+		fmt.Printf("%s %s\n", viper.GetString("cmd-ss2"), viper.GetString("cmd-ss-arg"))
+		fmt.Printf("%s %s\n", viper.GetString("cmd-ifconfig"), viper.GetString("cmd-ifconfig-arg"))
+		fmt.Printf("%s %s\n", viper.GetString("cmd-netstat"), viper.GetString("cmd-netstat-arg"))
+		fmt.Println("echo \"$?\"")
+	},
+}
+
 func init() {
 	// monitor flags
 	startCmd.PersistentFlags().DurationP("collect-interval", "i", time.Second, "Metric collection interval")
@@ -93,7 +109,9 @@ func init() {
 
 	// monitor command flags
 	startCmd.PersistentFlags().String("cmd-ifconfig", "/usr/bin/ifconfig", "The path of 'ifconfig'")
+	startCmd.PersistentFlags().String("cmd-ifconfig-arg", "", "Parameters when executing 'ifconfig'")
 	startCmd.PersistentFlags().String("cmd-ss", "/usr/bin/ss", "The path of 'ss'")
+	startCmd.PersistentFlags().String("cmd-ss2", "/usr/sbin/ss", "The path of 'ss'")
 	startCmd.PersistentFlags().String("cmd-ss-arg", "-4ntipmoHna", "Parameters when executing 'ss'")
 	startCmd.PersistentFlags().String("cmd-netstat", "/usr/bin/netstat", "The path of 'netstat'")
 	startCmd.PersistentFlags().String("cmd-netstat-arg", "-s", "Parameters when executing 'netstat'")
@@ -108,4 +126,5 @@ func init() {
 
 	fatalIf(viper.BindPFlags(startCmd.PersistentFlags()))
 	rootCmd.AddCommand(startCmd)
+	startCmd.AddCommand(startTestCmd)
 }

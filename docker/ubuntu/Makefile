@@ -1,5 +1,5 @@
 .PHONY: all
-all: builder
+all: runtime
 
 .PHONY: builder
 builder:

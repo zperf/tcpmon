@@ -15,14 +15,14 @@ import (
 
 type StorageTestSuite struct {
 	suite.Suite
-	path          string
-	periodOptions *DataStoreConfig
+	path   string
+	config *DataStoreConfig
 }
 
 func TestStorage(t *testing.T) {
 	s := &StorageTestSuite{
 		path: "/tmp/tcpmon-test",
-		periodOptions: &DataStoreConfig{
+		config: &DataStoreConfig{
 			MaxSize:         10000,
 			ReclaimBatch:    100000,
 			ReclaimInterval: 2 * time.Second,
@@ -40,7 +40,7 @@ func (s *StorageTestSuite) SetupTest() {
 func (s *StorageTestSuite) TestGetPrefix() {
 	assert := s.Assert()
 
-	ds := NewDatastore(0, s.path, s.periodOptions)
+	ds := NewDataStore(0, s.config)
 	defer ds.Close()
 
 	tx := ds.Tx()
@@ -96,7 +96,7 @@ func (s *StorageTestSuite) TestGetPrefix() {
 func (s *StorageTestSuite) TestGetKeys() {
 	assert := s.Assert()
 
-	ds := NewDatastore(0, s.path, s.periodOptions)
+	ds := NewDataStore(0, s.config)
 	defer ds.Close()
 
 	tx := ds.Tx()
@@ -115,11 +115,11 @@ func (s *StorageTestSuite) TestGetKeys() {
 }
 
 func (s *StorageTestSuite) TestPeriodicReclaim() {
-	ds := NewDatastore(0, s.path, s.periodOptions)
+	ds := NewDataStore(0, s.config)
 	defer ds.Close()
 
 	tx := ds.Tx()
-	for i := 0; i < s.periodOptions.MaxSize; i++ {
+	for i := 0; i < s.config.MaxSize; i++ {
 		tx <- &KVPair{
 			Key:   NewKey(PrefixNicMetric),
 			Value: nil,
@@ -139,12 +139,12 @@ func (s *StorageTestSuite) TestPeriodicReclaim() {
 	log.Trace().Int("size", size).Msg("insert")
 
 	// wait for reclaim trigger
-	time.Sleep(s.periodOptions.ReclaimInterval + time.Second)
+	time.Sleep(s.config.ReclaimInterval + time.Second)
 
 	size = ds.GetSize(nil)
 	log.Info().Int("size", size).Msg("reclaim done")
 
-	s.Assert().GreaterOrEqual(s.periodOptions.MaxSize, size)
+	s.Assert().GreaterOrEqual(s.config.MaxSize, size)
 }
 
 // writeBarrier waits for write complete
