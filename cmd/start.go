@@ -7,8 +7,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cockroachdb/errors"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -20,45 +18,6 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start monitoring",
 	Run: func(cmd *cobra.Command, args []string) {
-		// read config file
-		err := viper.ReadInConfig()
-		if err != nil {
-			// config file not found, is must be a dev env
-			// write a default config file to $HOME/.tcpmon/config.yaml
-			var expected viper.ConfigFileNotFoundError
-			if errors.As(err, &expected) {
-				log.Warn().Err(err).Msg("config file not found, creating default config file")
-				err = writeDefaultConfig()
-				if err != nil {
-					log.Fatal().Err(err).Msg("create default config file failed")
-				}
-			} else {
-				log.Fatal().Err(err).Msg("failed to read config file")
-			}
-		}
-
-		// init logger
-		level, _ := zerolog.ParseLevel(viper.GetString("log-level"))
-		config := tcpmon.LogConfig{
-			Level:                 level,
-			ConsoleLoggingEnabled: viper.GetBool("verbose"),
-			FileLoggingEnabled:    true,
-			Directory:             viper.GetString("log-dir"),
-			Filename:              viper.GetString("log-filename"),
-			MaxSize:               viper.GetInt("log-max-size"),
-			MaxBackups:            viper.GetInt("log-max-count"),
-		}
-		tcpmon.InitLogger(&config)
-
-		// print warnings after logger initialized
-		if level == zerolog.NoLevel {
-			log.Warn().Str("level", viper.GetString("log-level")).
-				Msg("invalid level, default to NoLevel")
-		}
-		log.Info().Str("configFile", viper.ConfigFileUsed()).
-			Str("logDir", viper.GetString("log-dir")).
-			Msg("Config loaded")
-
 		// create and start monitor
 		m, err := tcpmon.New(tcpmon.MonitorConfig{
 			CollectInterval: viper.GetDuration("collect-interval"),
