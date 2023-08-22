@@ -65,7 +65,6 @@ func (p KVPair) ToProto() (proto.Message, error) {
 		return nil, errors.Newf("invalid kind: '%v'", kind)
 	}
 
-	var msg proto.Message
 	switch kind {
 	case PrefixTcpMetric:
 		var m TcpMetric
@@ -73,7 +72,7 @@ func (p KVPair) ToProto() (proto.Message, error) {
 		if err != nil {
 			return nil, err
 		}
-		msg = &m
+		return &m, nil
 
 	case PrefixNetMetric:
 		var m NetstatMetric
@@ -81,7 +80,7 @@ func (p KVPair) ToProto() (proto.Message, error) {
 		if err != nil {
 			return nil, err
 		}
-		msg = &m
+		return &m, nil
 
 	case PrefixNicMetric:
 		var m NicMetric
@@ -89,10 +88,11 @@ func (p KVPair) ToProto() (proto.Message, error) {
 		if err != nil {
 			return nil, err
 		}
-		msg = &m
-	}
+		return &m, nil
 
-	return msg, nil
+	default:
+		return nil, errors.Newf("Should not reach here")
+	}
 }
 
 func (p KVPair) ToJSON() map[string]any {
