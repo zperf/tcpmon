@@ -81,11 +81,11 @@ func (m *Monitor) Collect(now time.Time, tx chan<- *KVPair) {
 	wg.Wait()
 }
 
-func (m *Monitor) Run(ctx context.Context, interval time.Duration) error {
+func (m *Monitor) Run(ctx context.Context, interval time.Duration, addr string) error {
 	ticker := time.NewTicker(interval)
 	tx := m.datastore.Tx()
 
-	m.startHttpServer(viper.GetString("listen"))
+	m.startHttpServer(addr)
 
 	initialMembers, err := m.datastore.GetMemberAddressList()
 	if err != nil {

@@ -56,8 +56,6 @@ func init() {
 	rootCmd.AddCommand(restoreCmd)
 	restoreCmd.Flags().StringP("output", "O", ".", "output database path")
 	restoreCmd.Flags().BoolP("force", "f", false, "force restore, may overwrite files")
-	restoreCmd.Flags().BoolP("print", "p", false, "print database as JSON after restore")
+	restoreCmd.Flags().Bool("print", false, "print database as JSON after restore")
 	addPrintFlags(restoreCmd)
-
-	fatalIf(viper.BindPFlags(restoreCmd.Flags()))
 }

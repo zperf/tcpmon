@@ -65,32 +65,45 @@ func newRollingFile(config *LogConfig) io.Writer {
 		Filename:   path.Join(config.Directory, config.Filename),
 		MaxBackups: config.MaxBackups, // files
 		MaxSize:    config.MaxSize,    // megabytes
-		MaxAge:     config.MaxAge,     // days
 		LocalTime:  true,              // use local time, default UTC time
 	}
 	_ = logger.Rotate()
 	return logger
 }
 
-type BadgerLogger struct{}
+type BadgerLogger struct {
+	log zerolog.Logger
+}
+
+func NewBadgerDbLogger() *BadgerLogger {
+	return &BadgerLogger{log: log.With().Str("mod", "badger").Logger().Level(zerolog.WarnLevel)}
+}
 
 func (b *BadgerLogger) Errorf(format string, args ...interface{}) {
-	log.Error().Str("mod", "badger").Msgf(strings.TrimSuffix(format, "\n"), args...)
+	b.log.Error().Msgf(strings.TrimSpace(format), args...)
 }
 
 func (b *BadgerLogger) Warningf(format string, args ...interface{}) {
-	log.Warn().Str("mod", "badger").Msgf(strings.TrimSuffix(format, "\n"), args...)
+	b.log.Warn().Msgf(strings.TrimSpace(format), args...)
 }
 
 func (b *BadgerLogger) Infof(format string, args ...interface{}) {
-	log.Info().Str("mod", "badger").Msgf(strings.TrimSuffix(format, "\n"), args...)
+	log.Info().Str("mod", "badger").Msgf(strings.TrimSpace(format), args...)
 }
 
 func (b *BadgerLogger) Debugf(format string, args ...interface{}) {
-	log.Debug().Str("mod", "badger").Msgf(strings.TrimSuffix(format, "\n"), args...)
+	b.log.Debug().Msgf(strings.TrimSpace(format), args...)
 }
 
-type MemberlistLogger struct{}
+type MemberlistLogger struct {
+	log zerolog.Logger
+}
+
+func NewMemberlistLogger() *MemberlistLogger {
+	return &MemberlistLogger{
+		log: log.With().Str("mod", "memberlist").Logger().Level(zerolog.InfoLevel),
+	}
+}
 
 func (m *MemberlistLogger) Write(p []byte) (int, error) {
 	log.Info().Str("mod", "memberlist").Msg(strings.TrimSpace(string(p)))
