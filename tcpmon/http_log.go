@@ -2,6 +2,7 @@ package tcpmon
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -24,6 +25,7 @@ func httpLogger() gin.HandlerFunc {
 		if msg == "" {
 			msg = ctx.Request.Method
 		}
+		msg = strings.TrimSpace(msg)
 
 		switch {
 		case code >= 400 && code < 500:

@@ -8,10 +8,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type NicMonitor struct{}
+type NetstatMonitor struct{ config *CmdConfig }
 
-func (m *NicMonitor) Collect(now time.Time) (*KVPair, error) {
-	r, _, err := RunIfconfig(now)
+func (m *NetstatMonitor) Collect(now time.Time) (*KVPair, error) {
+	r, _, err := m.RunNetstat(now)
 	if err != nil {
 		return nil, err
 	}
@@ -22,7 +22,7 @@ func (m *NicMonitor) Collect(now time.Time) (*KVPair, error) {
 	}
 
 	return &KVPair{
-		Key:   fmt.Sprintf("%s/%v/", PrefixNicRecord, now.UnixMilli()),
+		Key:   fmt.Sprintf("%s/%v/", PrefixNetMetric, now.UnixMilli()),
 		Value: val,
 	}, nil
 }

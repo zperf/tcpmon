@@ -15,74 +15,73 @@ import (
 
 type StorageTestSuite struct {
 	suite.Suite
-	path          string
-	periodOptions *PeriodOption
+	config *DataStoreConfig
 }
 
 func TestStorage(t *testing.T) {
 	s := &StorageTestSuite{
-		path: "/tmp/tcpmon-test",
-		periodOptions: &PeriodOption{
-			MaxSize:       10000,
-			DeleteSize:    100000,
-			ReclaimPeriod: 2 * time.Second,
-			GCPeriod:      5 * time.Minute,
+		config: &DataStoreConfig{
+			Path:            "/tmp/tcpmon-test",
+			MaxSize:         10000,
+			ReclaimBatch:    100000,
+			ReclaimInterval: 2 * time.Second,
+			GcInterval:      5 * time.Minute,
 		},
 	}
 	suite.Run(t, s)
 }
 
 func (s *StorageTestSuite) SetupTest() {
-	err := os.RemoveAll(s.path)
+	err := os.RemoveAll(s.config.Path)
 	s.Assert().NoError(err)
 }
 
 func (s *StorageTestSuite) TestGetPrefix() {
 	assert := s.Assert()
 
-	ds := NewDatastore(0, s.path, s.periodOptions)
+	ds := NewDataStore(0, s.config)
 	defer ds.Close()
 
 	tx := ds.Tx()
 
 	for i := 0; i < 3; i++ {
 		tx <- &KVPair{
-			Key:   NewKey(PrefixNicRecord),
+			Key:   NewKey(PrefixNicMetric),
 			Value: []byte("test-nic"),
 		}
 		tx <- &KVPair{
-			Key:   NewKey(PrefixTcpRecord),
+			Key:   NewKey(PrefixTcpMetric),
 			Value: []byte("test-tcp"),
 		}
 		tx <- &KVPair{
-			Key:   NewKey(PrefixNetRecord),
+			Key:   NewKey(PrefixNetMetric),
 			Value: []byte("test-net"),
 		}
 	}
 	s.writeBarrier(tx)
 
 	// check GetPrefix
-	pairs, err := ds.GetPrefix([]byte(PrefixNicRecord), 10, false)
+	pairs, err := ds.GetPrefix([]byte(PrefixNicMetric), 10, false)
 	assert.NoError(err)
 	assert.Equal(3, len(pairs))
 	for _, p := range pairs {
-		if !strings.HasPrefix(p.Key, PrefixNicRecord) {
+		if !strings.HasPrefix(p.Key, PrefixNicMetric) {
 			assert.Failf("Key: %s don't have the nic prefix", p.Key)
 		}
 	}
-	pairs, err = ds.GetPrefix([]byte(PrefixTcpRecord), 10, false)
+	pairs, err = ds.GetPrefix([]byte(PrefixTcpMetric), 10, false)
 	assert.NoError(err)
 	assert.Equal(3, len(pairs))
 	for _, p := range pairs {
-		if !strings.HasPrefix(p.Key, PrefixTcpRecord) {
+		if !strings.HasPrefix(p.Key, PrefixTcpMetric) {
 			assert.Failf("Key: %s don't have the tcp prefix", p.Key)
 		}
 	}
-	pairs, err = ds.GetPrefix([]byte(PrefixNetRecord), 10, false)
+	pairs, err = ds.GetPrefix([]byte(PrefixNetMetric), 10, false)
 	assert.NoError(err)
 	assert.Equal(3, len(pairs))
 	for _, p := range pairs {
-		if !strings.HasPrefix(p.Key, PrefixNetRecord) {
+		if !strings.HasPrefix(p.Key, PrefixNetMetric) {
 			assert.Failf("Key: %s don't have the net prefix", p.Key)
 		}
 	}
@@ -96,14 +95,14 @@ func (s *StorageTestSuite) TestGetPrefix() {
 func (s *StorageTestSuite) TestGetKeys() {
 	assert := s.Assert()
 
-	ds := NewDatastore(0, s.path, s.periodOptions)
+	ds := NewDataStore(0, s.config)
 	defer ds.Close()
 
 	tx := ds.Tx()
 
 	for i := 0; i < 3; i++ {
 		tx <- &KVPair{
-			Key:   NewKey(PrefixNicRecord),
+			Key:   NewKey(PrefixNicMetric),
 			Value: nil,
 		}
 	}
@@ -115,21 +114,21 @@ func (s *StorageTestSuite) TestGetKeys() {
 }
 
 func (s *StorageTestSuite) TestPeriodicReclaim() {
-	ds := NewDatastore(0, s.path, s.periodOptions)
+	ds := NewDataStore(0, s.config)
 	defer ds.Close()
 
 	tx := ds.Tx()
-	for i := 0; i < s.periodOptions.MaxSize; i++ {
+	for i := 0; i < s.config.MaxSize; i++ {
 		tx <- &KVPair{
-			Key:   NewKey(PrefixNicRecord),
+			Key:   NewKey(PrefixNicMetric),
 			Value: nil,
 		}
 		tx <- &KVPair{
-			Key:   NewKey(PrefixNetRecord),
+			Key:   NewKey(PrefixNetMetric),
 			Value: nil,
 		}
 		tx <- &KVPair{
-			Key:   NewKey(PrefixTcpRecord),
+			Key:   NewKey(PrefixTcpMetric),
 			Value: nil,
 		}
 	}
@@ -139,12 +138,12 @@ func (s *StorageTestSuite) TestPeriodicReclaim() {
 	log.Trace().Int("size", size).Msg("insert")
 
 	// wait for reclaim trigger
-	time.Sleep(s.periodOptions.ReclaimPeriod + time.Second)
+	time.Sleep(s.config.ReclaimInterval + time.Second)
 
 	size = ds.GetSize(nil)
 	log.Info().Int("size", size).Msg("reclaim done")
 
-	s.Assert().GreaterOrEqual(s.periodOptions.MaxSize, size)
+	s.Assert().GreaterOrEqual(s.config.MaxSize, size)
 }
 
 // writeBarrier waits for write complete
@@ -152,7 +151,7 @@ func (s *StorageTestSuite) writeBarrier(tx chan<- *KVPair) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	tx <- &KVPair{
-		Key:   NewKey(PrefixSignalRecord),
+		Key:   NewKey(PrefixSignal),
 		Value: nil,
 		Callback: func(err error) {
 			s.Assert().NoError(err)

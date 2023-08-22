@@ -101,6 +101,8 @@ message SocketMetric {
   uint32 rcv_ssthresh = 48;
   uint32 data_segs_out = 49;
   uint32 data_segs_in = 50;
+  uint32 rwnd_limited = 51;
+  uint32 sndbuf_limited = 52;
 }
 
 message TcpMetric {
@@ -161,4 +163,8 @@ message NetstatMetric {
   uint32 udp_packets_sent = 22;
   uint32 udp_receive_buffer_errors = 23;
   uint32 udp_send_buffer_errors = 24;
+}
+
+message MemberInfo {
+  string http_listen = 1;
 }

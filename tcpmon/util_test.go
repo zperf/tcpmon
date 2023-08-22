@@ -24,14 +24,3 @@ func (s *UtilTestSuite) TestParseUint32() {
 	assert.Error(err)
 	assert.Equal(uint32(0), val)
 }
-
-func (s *UtilTestSuite) TestParseInt() {
-	assert := s.Assert()
-	val, err := ParseInt("123")
-	assert.NoError(err)
-	assert.Equal(123, val)
-
-	val, err = ParseInt("")
-	assert.Error(err)
-	assert.Equal(0, val)
-}

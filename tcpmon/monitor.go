@@ -3,55 +3,57 @@ package tcpmon
 import (
 	"context"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
-	"unicode"
 
 	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 )
 
 type Monitor struct {
-	sockMon      *SocketMonitor
-	ifaceMon     *NicMonitor
-	netstatMon   *NetstatMonitor
-	datastore    *Datastore
-	httpServer   *http.Server
-	gossipServer *GossipServer
+	config     MonitorConfig
+	sockMon    *SocketMonitor
+	ifaceMon   *NicMonitor
+	netstatMon *NetstatMonitor
+	datastore  *DataStore
+	httpServer *http.Server
+	quorum     *Quorum
 }
 
-func New() (*Monitor, error) {
+type MonitorConfig struct {
+	DataStoreConfig
+
+	QuorumPort      int
+	CollectInterval time.Duration
+	HttpListen      string
+}
+
+func New(config MonitorConfig) (*Monitor, error) {
 	epoch, err := randUint64()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate initial epoch")
 	}
 
-	path := viper.GetString("db")
-	periodOptions := &PeriodOption{
-		MaxSize:       viper.GetInt("max-size"),
-		DeleteSize:    viper.GetInt("delete-size"),
-		ReclaimPeriod: viper.GetDuration("reclaim-period"),
-		GCPeriod:      viper.GetDuration("gc-period"),
-	}
+	ds := NewDataStore(epoch, &config.DataStoreConfig)
+	cmdConfig := NewCmdConfig()
 
 	return &Monitor{
-		sockMon:      &SocketMonitor{},
-		ifaceMon:     &NicMonitor{},
-		netstatMon:   &NetstatMonitor{},
-		datastore:    NewDatastore(epoch, path, periodOptions),
-		gossipServer: NewGossipServer(),
+		config:     config,
+		sockMon:    &SocketMonitor{cmdConfig},
+		ifaceMon:   &NicMonitor{cmdConfig},
+		netstatMon: &NetstatMonitor{cmdConfig},
+		datastore:  ds,
+		quorum:     NewQuorum(ds, &config),
 	}, nil
 }
 
-func (mon *Monitor) Collect(now time.Time, tx chan<- *KVPair) {
+func (m *Monitor) Collect(now time.Time, tx chan<- *KVPair) {
 	var wg sync.WaitGroup
 	wg.Add(3)
 
 	go func() {
 		defer wg.Done()
-		req, err := mon.sockMon.Collect(now)
+		req, err := m.sockMon.Collect(now)
 		if err != nil {
 			log.Warn().Err(err).Msg("collect socket metrics failed")
 			return
@@ -61,7 +63,7 @@ func (mon *Monitor) Collect(now time.Time, tx chan<- *KVPair) {
 
 	go func() {
 		defer wg.Done()
-		req, err := mon.ifaceMon.Collect(now)
+		req, err := m.ifaceMon.Collect(now)
 		if err != nil {
 			log.Warn().Err(err).Msg("collect nic metrics failed")
 			return
@@ -71,7 +73,7 @@ func (mon *Monitor) Collect(now time.Time, tx chan<- *KVPair) {
 
 	go func() {
 		defer wg.Done()
-		req, err := mon.netstatMon.Collect(now)
+		req, err := m.netstatMon.Collect(now)
 		if err != nil {
 			log.Warn().Err(err).Msg("collect net metrics failed")
 			return
@@ -82,39 +84,44 @@ func (mon *Monitor) Collect(now time.Time, tx chan<- *KVPair) {
 	wg.Wait()
 }
 
-func (mon *Monitor) Run(ctx context.Context, interval time.Duration) error {
-	ticker := time.NewTicker(interval)
-	tx := mon.datastore.Tx()
+func (m *Monitor) Run(ctx context.Context) error {
+	ticker := time.NewTicker(m.config.CollectInterval)
+	tx := m.datastore.Tx()
 
-	mon.startHttpServer(viper.GetString("listen"))
+	m.startHttpServer(m.config.HttpListen)
 
-	initialMembers := strings.FieldsFunc(viper.GetString("initial-members"), func(c rune) bool {
-		return unicode.IsSpace(c) || c == ','
-	})
-	mon.gossipServer.Join(initialMembers)
+	initialMembers, err := m.datastore.GetMemberAddressList()
+	if err != nil {
+		log.Info().Err(err).Msg("Get members from db failed")
+	} else if len(initialMembers) != 0 {
+		m.quorum.Join(initialMembers)
+	}
 
 	for {
 		select {
 		case now := <-ticker.C:
-			mon.Collect(now, tx)
+			m.Collect(now, tx)
 		case <-ctx.Done():
 			log.Info().Err(ctx.Err()).Msg("shutting down...")
-			mon.Close()
+			m.Close()
 			return nil
 		}
 	}
 }
 
-func (mon *Monitor) Close() {
-	if mon.httpServer != nil {
+func (m *Monitor) Close() {
+	if m.httpServer != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
-		err := mon.httpServer.Shutdown(ctx)
+		err := m.httpServer.Shutdown(ctx)
 		if err != nil {
 			log.Warn().Err(err).Msg("failed shutdown HTTP server")
 		}
 	}
-	if mon.datastore != nil {
-		mon.datastore.Close()
+	if m.datastore != nil {
+		m.datastore.Close()
+	}
+	if m.quorum != nil {
+		m.quorum.Close()
 	}
 }

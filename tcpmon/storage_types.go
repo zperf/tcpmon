@@ -11,22 +11,35 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const CheckRecordNumber = 3
-const PrefixTcpRecord = "tcp"
-const PrefixNicRecord = "nic"
-const PrefixNetRecord = "net"
-const PrefixSignalRecord = "sig"
+const MetricTypeCount = 3
+const PrefixTcpMetric = "tcp"
+const PrefixNicMetric = "nic"
+const PrefixNetMetric = "net"
 
-func ValidPrefix(s string) bool {
-	return s == PrefixNicRecord || s == PrefixTcpRecord || s == PrefixNetRecord
+// PrefixSignal inject a signal into storage. Only for testing
+const PrefixSignal = "sig"
+
+// PrefixMember is the member in the cluster
+const PrefixMember = "mbr"
+
+func ValidMetricPrefix(s string) bool {
+	return s == PrefixNicMetric || s == PrefixTcpMetric || s == PrefixNetMetric
 }
 
-func GetType(key string) string {
+func ValidPrefix(s string) bool {
+	return ValidMetricPrefix(s) || s == PrefixMember
+}
+
+func GetPrefixType(key string) string {
 	p := strings.IndexRune(key, '/')
 	if p < 0 {
 		return ""
 	}
 	return key[:p]
+}
+
+func KeyJoin(elems ...string) string {
+	return strings.Join(elems, "/")
 }
 
 func NewKey(kind string) string {
@@ -39,40 +52,47 @@ type KVPair struct {
 	Callback func(err error)
 }
 
+func NewKVPair(key string, value []byte) *KVPair {
+	return &KVPair{
+		Key:   key,
+		Value: value,
+	}
+}
+
 func (p KVPair) ToProto() (proto.Message, error) {
-	kind := GetType(p.Key)
+	kind := GetPrefixType(p.Key)
 	if kind == "" {
 		return nil, errors.Newf("invalid kind: '%v'", kind)
 	}
 
-	var msg proto.Message
 	switch kind {
-	case PrefixTcpRecord:
+	case PrefixTcpMetric:
 		var m TcpMetric
 		err := proto.Unmarshal(p.Value, &m)
 		if err != nil {
 			return nil, err
 		}
-		msg = &m
+		return &m, nil
 
-	case PrefixNetRecord:
+	case PrefixNetMetric:
 		var m NetstatMetric
 		err := proto.Unmarshal(p.Value, &m)
 		if err != nil {
 			return nil, err
 		}
-		msg = &m
+		return &m, nil
 
-	case PrefixNicRecord:
+	case PrefixNicMetric:
 		var m NicMetric
 		err := proto.Unmarshal(p.Value, &m)
 		if err != nil {
 			return nil, err
 		}
-		msg = &m
-	}
+		return &m, nil
 
-	return msg, nil
+	default:
+		return nil, errors.Newf("Should not reach here")
+	}
 }
 
 func (p KVPair) ToJSON() map[string]any {
@@ -97,4 +117,14 @@ func (p KVPair) ToJSON() map[string]any {
 	}
 
 	return h
+}
+
+func (p KVPair) ToJSONString() string {
+	h := p.ToJSON()
+	s, err := json.Marshal(h)
+	if err != nil {
+		return fmt.Sprintf(`{"error":"%s"}`, err.Error())
+	}
+
+	return string(s)
 }

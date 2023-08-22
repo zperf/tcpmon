@@ -12,13 +12,13 @@ import (
 // maxCount indicates the maximum number of entries to be returned, <= 0 means unlimited
 // hasValue indicates whether the returned value contains value
 // prefix can be null, in this case, all key-value pairs are returned.
-func (d *Datastore) GetPrefix(prefix []byte, maxCount int, hasValue bool) ([]KVPair, error) {
+func GetPrefix(db *badger.DB, prefix []byte, maxCount int, hasValue bool) ([]KVPair, error) {
 	if maxCount <= 0 {
 		maxCount = math.MaxInt
 	}
 
 	r := make([]KVPair, 0)
-	err := d.db.View(func(txn *badger.Txn) (err error) {
+	err := db.View(func(txn *badger.Txn) (err error) {
 		err = nil
 		options := badger.DefaultIteratorOptions
 		options.Reverse = true
@@ -58,8 +58,12 @@ func (d *Datastore) GetPrefix(prefix []byte, maxCount int, hasValue bool) ([]KVP
 	return r, nil
 }
 
+func (d *DataStore) GetPrefix(prefix []byte, maxCount int, hasValue bool) ([]KVPair, error) {
+	return GetPrefix(d.db, prefix, maxCount, hasValue)
+}
+
 // GetKeys returns all keys in the database
-func (d *Datastore) GetKeys() ([]string, error) {
+func (d *DataStore) GetKeys() ([]string, error) {
 	keys := make([]string, 0)
 	err := d.db.View(func(txn *badger.Txn) error {
 		options := badger.DefaultIteratorOptions
@@ -79,6 +83,29 @@ func (d *Datastore) GetKeys() ([]string, error) {
 	return keys, nil
 }
 
-func (d *Datastore) Backup(w io.Writer, since uint64) (uint64, error) {
+func (d *DataStore) Backup(w io.Writer, since uint64) (uint64, error) {
 	return d.db.Backup(w, since)
+}
+
+func (d *DataStore) Get(key string) (*KVPair, error) {
+	p := &KVPair{
+		Key: key,
+	}
+	err := d.db.View(func(txn *badger.Txn) error {
+		it, err := txn.Get([]byte(key))
+		if err != nil {
+			return err
+		}
+
+		p.Value, err = it.ValueCopy(nil)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return p, nil
 }

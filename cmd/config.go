@@ -2,7 +2,10 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
+	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -15,7 +18,7 @@ var configCmd = &cobra.Command{
 }
 
 var configGetDefaultCmd = &cobra.Command{
-	Use:   "get-default",
+	Use:   "default",
 	Short: "Generate default config file",
 	Run: func(cmd *cobra.Command, args []string) {
 		options := viper.AllSettings()
@@ -25,4 +28,24 @@ var configGetDefaultCmd = &cobra.Command{
 		}
 		fmt.Println(string(out))
 	},
+}
+
+func init() {
+	configCmd.AddCommand(configGetDefaultCmd)
+	rootCmd.AddCommand(configCmd)
+}
+
+func writeDefaultConfig() error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	parentDir := filepath.Join(home, ".tcpmon")
+	err = os.MkdirAll(parentDir, 0755)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return errors.WithStack(viper.SafeWriteConfigAs(filepath.Join(parentDir, "config.yaml")))
 }

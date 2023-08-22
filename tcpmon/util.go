@@ -3,9 +3,11 @@ package tcpmon
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"fmt"
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 )
@@ -35,22 +37,6 @@ func ParseUint64(s string) (uint64, error) {
 	return val, nil
 }
 
-func ParseInt(s string) (int, error) {
-	val, err := strconv.ParseInt(s, 10, 32)
-	if err != nil {
-		return 0, err
-	}
-	return int(val), nil
-}
-
-func ParseFloat32(s string) (float32, error) {
-	val, err := strconv.ParseFloat(s, 32)
-	if err != nil {
-		return 0, err
-	}
-	return float32(val), nil
-}
-
 func ParseFloat64(s string) (float64, error) {
 	val, err := strconv.ParseFloat(s, 64)
 	if err != nil {
@@ -76,4 +62,53 @@ var reFilenameFilter = regexp.MustCompile(`[\\/:*?"<>|]`)
 
 func SafeFilename(filename string) string {
 	return reFilenameFilter.ReplaceAllString(filename, "_")
+}
+
+func GetIpFromAddress(s string) string {
+	p := strings.Index(s, ":")
+	if p == -1 {
+		return s
+	}
+	return s[:p]
+}
+
+type IpAddr struct {
+	Address string
+	Port    int
+}
+
+func ParseIpAddr(s string) *IpAddr {
+	p := strings.Index(s, ":")
+	if p == -1 {
+		return nil
+	}
+
+	port, err := strconv.ParseInt(s[p+1:], 10, 32)
+	if err != nil {
+		return nil
+	}
+
+	return &IpAddr{
+		Address: s[:p],
+		Port:    int(port),
+	}
+}
+
+func (a *IpAddr) String() string {
+	return fmt.Sprintf("%s:%d", a.Address, a.Port)
+}
+
+func FileExists(s string) (bool, error) {
+	_, err := os.Stat(s)
+	if err != nil {
+		if os.IsNotExist(err) {
+			err = nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func splitSpace(c rune) bool {
+	return c == ' '
 }

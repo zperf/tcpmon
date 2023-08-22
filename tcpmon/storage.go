@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type Datastore struct {
+type DataStore struct {
 	tx            chan *KVPair
 	done          chan struct{}
 	db            *badger.DB
@@ -21,57 +21,78 @@ type Datastore struct {
 	tickerGC      *time.Ticker
 }
 
-type PeriodOption struct {
-	MaxSize       int
-	DeleteSize    int
-	ReclaimPeriod time.Duration
-	GCPeriod      time.Duration
+type DataStoreConfig struct {
+	Path            string
+	MaxSize         int
+	ReclaimBatch    int
+	ReclaimInterval time.Duration
+	GcInterval      time.Duration
 }
 
-func NewDatastore(initialEpoch uint64, path string, periodOptions *PeriodOption) *Datastore {
-	options := badger.DefaultOptions(path).
-		// TODO(fanyang) log with zerolog
-		WithLoggingLevel(badger.WARNING).
+func (c *DataStoreConfig) WithDefault() {
+	if c.MaxSize == 0 {
+		c.MaxSize = 30000
+	}
+	if c.ReclaimBatch == 0 {
+		c.ReclaimBatch = 2000
+	}
+	if c.ReclaimInterval == 0 {
+		c.ReclaimInterval = time.Minute
+	}
+	if c.GcInterval == 0 {
+		c.GcInterval = 5 * time.Minute
+	}
+}
+
+func NewDataStore(initialEpoch uint64, config *DataStoreConfig) *DataStore {
+	config.WithDefault()
+
+	options := badger.DefaultOptions(config.Path).
+		WithLogger(NewBadgerLogger()).
 		WithInMemory(false).
 		WithCompression(boptions.ZSTD).
-		WithValueLogFileSize(100 * 1000 * 1000) // MB
+		WithNumGoroutines(2).
+		WithNumMemtables(1).
+		WithMemTableSize(16 << 20).
+		WithCompactL0OnClose(true).
+		WithValueLogFileSize(100 << 20) // MB
 
 	db, err := badger.Open(options)
 	if err != nil {
 		log.Fatal().Err(errors.WithStack(err)).Msg("failed open database")
 	}
 
-	log.Info().Uint64("initialEpoch", initialEpoch).Msg("datastore created")
+	log.Info().Uint64("initialEpoch", initialEpoch).Msg("Created")
 	tx := make(chan *KVPair, 256)
 
-	d := &Datastore{
+	d := &DataStore{
 		done:          make(chan struct{}),
 		tx:            tx,
 		db:            db,
-		tickerReclaim: time.NewTicker(periodOptions.ReclaimPeriod),
-		tickerGC:      time.NewTicker(periodOptions.GCPeriod),
+		tickerReclaim: time.NewTicker(config.ReclaimInterval),
+		tickerGC:      time.NewTicker(config.GcInterval),
 	}
 	d.wait.Add(3)
 
 	go d.writer(initialEpoch)
-	go d.periodicReclaim(periodOptions.MaxSize, periodOptions.DeleteSize)
-	go d.periodicGC()
+	go d.autoReclaim(config.MaxSize, config.ReclaimBatch)
+	go d.autoGC()
 	return d
 }
 
 // Tx returns a send-only channel
-func (d *Datastore) Tx() chan<- *KVPair {
+func (d *DataStore) Tx() chan<- *KVPair {
 	return d.tx
 }
 
 // Close the datastore and shutdown
-func (d *Datastore) Close() {
+func (d *DataStore) Close() {
 	close(d.done)
 	d.wait.Wait()
 }
 
-func (d *Datastore) writer(initialEpoch uint64) {
-	log.Info().Msg("datastore writer started")
+func (d *DataStore) writer(initialEpoch uint64) {
+	log.Info().Msg("Writer started")
 	defer func(wait *sync.WaitGroup, db *badger.DB) {
 		err := db.Close()
 		if err != nil {
@@ -101,7 +122,7 @@ func (d *Datastore) writer(initialEpoch uint64) {
 		epoch++
 
 		var err error
-		if !strings.HasPrefix(key, PrefixSignalRecord) {
+		if !strings.HasPrefix(key, PrefixSignal) {
 			// TODO(fanyang) batch write txn
 			err = d.db.Update(func(txn *badger.Txn) error {
 				return txn.Set([]byte(req.Key), req.Value)
@@ -116,7 +137,7 @@ func (d *Datastore) writer(initialEpoch uint64) {
 	}
 }
 
-func (d *Datastore) GetSize(prefix []byte) int {
+func (d *DataStore) GetSize(prefix []byte) int {
 	size := 0
 	err := d.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
@@ -137,7 +158,7 @@ func (d *Datastore) GetSize(prefix []byte) int {
 	return size
 }
 
-func (d *Datastore) checkDeletePrefix(prefix []byte, maxSize, deleteSize int) {
+func (d *DataStore) checkDeletePrefix(prefix []byte, maxSize int, deleteSize int) {
 	size := d.GetSize(prefix)
 	if size <= maxSize {
 		return
@@ -169,35 +190,31 @@ func (d *Datastore) checkDeletePrefix(prefix []byte, maxSize, deleteSize int) {
 		return nil
 	})
 	if err != nil {
-		log.Warn().Err(err).Msg("failed to update db")
+		log.Warn().Err(err).Msg("failed to delete")
 	}
 }
 
-func (d *Datastore) periodicReclaim(maxSize, deleteSize int) {
-	log.Info().Msg("datastore periodic delete started")
+func (d *DataStore) autoReclaim(maxSize, deleteSize int) {
 	defer func(wait *sync.WaitGroup) {
 		wait.Done()
-		log.Info().Msg("datastore periodic delete exited")
 	}(&d.wait)
 
-	maxSize, deleteSize = maxSize/CheckRecordNumber, deleteSize/CheckRecordNumber
+	maxSize, deleteSize = maxSize/MetricTypeCount, deleteSize/MetricTypeCount
 	for {
 		select {
 		case <-d.done:
 			return
 		case <-d.tickerReclaim.C:
-			d.checkDeletePrefix([]byte(PrefixNetRecord), maxSize, deleteSize)
-			d.checkDeletePrefix([]byte(PrefixNicRecord), maxSize, deleteSize)
-			d.checkDeletePrefix([]byte(PrefixTcpRecord), maxSize, deleteSize)
+			d.checkDeletePrefix([]byte(PrefixNetMetric), maxSize, deleteSize)
+			d.checkDeletePrefix([]byte(PrefixNicMetric), maxSize, deleteSize)
+			d.checkDeletePrefix([]byte(PrefixTcpMetric), maxSize, deleteSize)
 		}
 	}
 }
 
-func (d *Datastore) periodicGC() {
-	log.Info().Msg("datastore periodic GC started")
+func (d *DataStore) autoGC() {
 	defer func(wait *sync.WaitGroup) {
 		wait.Done()
-		log.Info().Msg("datastore periodic GC exited")
 	}(&d.wait)
 
 	for {

@@ -7,19 +7,9 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/spf13/viper"
-
 	"github.com/cockroachdb/errors"
 	"github.com/go-cmd/cmd"
 )
-
-type netstatOption struct {
-	Path    string
-	Timeout time.Duration
-	Arg     string
-}
-
-var netstatOptions *netstatOption
 
 var headSet = map[string]struct{}{
 	"Ip:":      {},
@@ -30,10 +20,6 @@ var headSet = map[string]struct{}{
 	"UdpLite:": {},
 	"TcpExt:":  {},
 	"IpExt:":   {},
-}
-
-var splitFunc = func(c rune) bool {
-	return c == ' '
 }
 
 func ParseNetstatOutput(r *NetstatMetric, out []string) {
@@ -48,72 +34,64 @@ func ParseNetstatOutput(r *NetstatMetric, out []string) {
 		}
 		if flag == "Ip:" {
 			if strings.Contains(line, "total packets received") {
-				r.IpTotalPacketsReceived, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.IpTotalPacketsReceived, _ = ParseUint32(strings.FieldsFunc(line, splitSpace)[0])
 			} else if strings.Contains(line, "forwarded") {
-				r.IpForwarded, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.IpForwarded, _ = ParseUint32(strings.FieldsFunc(line, splitSpace)[0])
 			} else if strings.Contains(line, "incoming packets discarded") {
-				r.IpIncomingPacketsDiscarded, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.IpIncomingPacketsDiscarded, _ = ParseUint32(strings.FieldsFunc(line, splitSpace)[0])
 			} else if strings.Contains(line, "incoming packets delivered") {
-				r.IpIncomingPacketsDelivered, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.IpIncomingPacketsDelivered, _ = ParseUint32(strings.FieldsFunc(line, splitSpace)[0])
 			} else if strings.Contains(line, "requests sent out") {
-				r.IpRequestsSentOut, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.IpRequestsSentOut, _ = ParseUint32(strings.FieldsFunc(line, splitSpace)[0])
 			} else if strings.Contains(line, "outgoing packets dropped") {
-				r.IpOutgoingPacketsDropped, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.IpOutgoingPacketsDropped, _ = ParseUint32(strings.FieldsFunc(line, splitSpace)[0])
 			}
 		} else if flag == "Tcp:" {
 			if strings.Contains(line, "active connections openings") {
-				r.TcpActiveConnectionsOpenings, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.TcpActiveConnectionsOpenings, _ = ParseUint32(strings.FieldsFunc(line, splitSpace)[0])
 			} else if strings.Contains(line, "passive connection openings") {
-				r.TcpPassiveConnectionOpenings, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.TcpPassiveConnectionOpenings, _ = ParseUint32(strings.FieldsFunc(line, splitSpace)[0])
 			} else if strings.Contains(line, "failed connection attempts") {
-				r.TcpFailedConnectionAttempts, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.TcpFailedConnectionAttempts, _ = ParseUint32(strings.FieldsFunc(line, splitSpace)[0])
 			} else if strings.Contains(line, "connection resets received") {
-				r.TcpConnectionResetsReceived, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.TcpConnectionResetsReceived, _ = ParseUint32(strings.FieldsFunc(line, splitSpace)[0])
 			} else if strings.Contains(line, "connections established") {
-				r.TcpConnectionsEstablished, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.TcpConnectionsEstablished, _ = ParseUint32(strings.FieldsFunc(line, splitSpace)[0])
 			} else if strings.Contains(line, "segments received") && !strings.Contains(line, "bad") {
-				r.TcpSegmentsReceived, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.TcpSegmentsReceived, _ = ParseUint32(strings.FieldsFunc(line, splitSpace)[0])
 			} else if strings.Contains(line, "segments send out") {
-				r.TcpSegmentsSendOut, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.TcpSegmentsSendOut, _ = ParseUint32(strings.FieldsFunc(line, splitSpace)[0])
 			} else if strings.Contains(line, "segments retransmit") {
 				// NOTE: in the newer Linux version (like fc38), `netstat -s | grep retrans` will return retransmitted
 				// The older (like el7) will return a typo: retransmited
 				// We should take the common prefix `retransmit`
-				r.TcpSegmentsRetransmitted, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.TcpSegmentsRetransmitted, _ = ParseUint32(strings.FieldsFunc(line, splitSpace)[0])
 			} else if strings.Contains(line, "bad segments received") {
-				r.TcpBadSegmentsReceived, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.TcpBadSegmentsReceived, _ = ParseUint32(strings.FieldsFunc(line, splitSpace)[0])
 			} else if strings.Contains(line, "resets sent") {
-				r.TcpResetsSent, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.TcpResetsSent, _ = ParseUint32(strings.FieldsFunc(line, splitSpace)[0])
 			}
 		} else if flag == "Udp:" {
 			if strings.Contains(line, "packets received") {
-				r.UdpPacketsReceived, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.UdpPacketsReceived, _ = ParseUint32(strings.FieldsFunc(line, splitSpace)[0])
 			} else if strings.Contains(line, "packets to unknown port received") {
-				r.UdpPacketsToUnknownPortReceived, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.UdpPacketsToUnknownPortReceived, _ = ParseUint32(strings.FieldsFunc(line, splitSpace)[0])
 			} else if strings.Contains(line, "packet receive errors") {
-				r.UdpPacketReceiveErrors, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.UdpPacketReceiveErrors, _ = ParseUint32(strings.FieldsFunc(line, splitSpace)[0])
 			} else if strings.Contains(line, "packets sent") {
-				r.UdpPacketsSent, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.UdpPacketsSent, _ = ParseUint32(strings.FieldsFunc(line, splitSpace)[0])
 			} else if strings.Contains(line, "receive buffer errors") {
-				r.UdpReceiveBufferErrors, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.UdpReceiveBufferErrors, _ = ParseUint32(strings.FieldsFunc(line, splitSpace)[0])
 			} else if strings.Contains(line, "send buffer errors") {
-				r.UdpSendBufferErrors, _ = ParseUint32(strings.FieldsFunc(line, splitFunc)[0])
+				r.UdpSendBufferErrors, _ = ParseUint32(strings.FieldsFunc(line, splitSpace)[0])
 			}
 		}
 	}
 }
 
-func RunNetstat(now time.Time) (*NetstatMetric, string, error) {
-	if netstatOptions == nil {
-		netstatOptions = &netstatOption{
-			Path:    viper.GetString("netstat"),
-			Timeout: viper.GetDuration("command-timeout"),
-			Arg:     viper.GetString("netstat-arg"),
-		}
-	}
-
-	c := cmd.NewCmd(netstatOptions.Path, netstatOptions.Arg)
-	ctx, cancel := context.WithTimeout(context.Background(), netstatOptions.Timeout)
+func (m *NetstatMonitor) RunNetstat(now time.Time) (*NetstatMetric, string, error) {
+	c := cmd.NewCmd(m.config.PathNetstat, m.config.ArgNetstat)
+	ctx, cancel := context.WithTimeout(context.Background(), m.config.Timeout)
 	defer cancel()
 
 	select {

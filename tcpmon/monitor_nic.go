@@ -8,10 +8,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type SocketMonitor struct{}
+type NicMonitor struct{ config *CmdConfig }
 
-func (m *SocketMonitor) Collect(now time.Time) (*KVPair, error) {
-	r, _, err := RunSS(now)
+func (m *NicMonitor) Collect(now time.Time) (*KVPair, error) {
+	r, _, err := m.RunIfconfig(now)
 	if err != nil {
 		return nil, err
 	}
@@ -22,7 +22,7 @@ func (m *SocketMonitor) Collect(now time.Time) (*KVPair, error) {
 	}
 
 	return &KVPair{
-		Key:   fmt.Sprintf("%s/%v/", PrefixTcpRecord, now.UnixMilli()),
+		Key:   fmt.Sprintf("%s/%v/", PrefixNicMetric, now.UnixMilli()),
 		Value: val,
 	}, nil
 }

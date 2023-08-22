@@ -7,16 +7,8 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/go-cmd/cmd"
-	"github.com/spf13/viper"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
-
-type ifconfigOption struct {
-	Path    string
-	Timeout time.Duration
-}
-
-var ifconfigOptions *ifconfigOption
 
 func ParseIfconfigOutput(nics *NicMetric, out []string) {
 	r := &IfaceMetric{}
@@ -28,17 +20,13 @@ func ParseIfconfigOutput(nics *NicMetric, out []string) {
 			r = &IfaceMetric{}
 			r.Name = fields[0]
 		} else if strings.Contains(line, "RX errors ") {
-			fields := strings.FieldsFunc(line, func(c rune) bool {
-				return c == ' '
-			})
+			fields := strings.FieldsFunc(line, splitSpace)
 			r.RxErrors, _ = ParseUint32(fields[2])
 			r.RxDropped, _ = ParseUint32(fields[4])
 			r.RxOverruns, _ = ParseUint32(fields[6])
 			r.RxFrame, _ = ParseUint32(fields[8])
 		} else if strings.Contains(line, "TX errors ") {
-			fields := strings.FieldsFunc(line, func(c rune) bool {
-				return c == ' '
-			})
+			fields := strings.FieldsFunc(line, splitSpace)
 			r.TxErrors, _ = ParseUint32(fields[2])
 			r.TxDropped, _ = ParseUint32(fields[4])
 			r.TxOverruns, _ = ParseUint32(fields[6])
@@ -49,16 +37,9 @@ func ParseIfconfigOutput(nics *NicMetric, out []string) {
 	}
 }
 
-func RunIfconfig(now time.Time) (*NicMetric, string, error) {
-	if ifconfigOptions == nil {
-		ifconfigOptions = &ifconfigOption{
-			Path:    viper.GetString("ifconfig"),
-			Timeout: viper.GetDuration("command-timeout"),
-		}
-	}
-
-	c := cmd.NewCmd(ifconfigOptions.Path)
-	ctx, cancel := context.WithTimeout(context.Background(), ifconfigOptions.Timeout)
+func (m *NicMonitor) RunIfconfig(now time.Time) (*NicMetric, string, error) {
+	c := cmd.NewCmd(m.config.PathIfconfig)
+	ctx, cancel := context.WithTimeout(context.Background(), m.config.Timeout)
 	defer cancel()
 
 	select {
