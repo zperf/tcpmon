@@ -109,6 +109,7 @@ func init() {
 
 	// monitor command flags
 	startCmd.PersistentFlags().String("cmd-ifconfig", "/usr/bin/ifconfig", "The path of 'ifconfig'")
+	startCmd.PersistentFlags().String("cmd-ifconfig2", "/usr/sbin/ifconfig", "The path of 'ifconfig'")
 	startCmd.PersistentFlags().String("cmd-ifconfig-arg", "", "Parameters when executing 'ifconfig'")
 	startCmd.PersistentFlags().String("cmd-ss", "/usr/bin/ss", "The path of 'ss'")
 	startCmd.PersistentFlags().String("cmd-ss2", "/usr/sbin/ss", "The path of 'ss'")
