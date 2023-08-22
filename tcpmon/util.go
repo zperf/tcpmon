@@ -36,22 +36,6 @@ func ParseUint64(s string) (uint64, error) {
 	return val, nil
 }
 
-func ParseInt(s string) (int, error) {
-	val, err := strconv.ParseInt(s, 10, 32)
-	if err != nil {
-		return 0, err
-	}
-	return int(val), nil
-}
-
-func ParseFloat32(s string) (float32, error) {
-	val, err := strconv.ParseFloat(s, 32)
-	if err != nil {
-		return 0, err
-	}
-	return float32(val), nil
-}
-
 func ParseFloat64(s string) (float64, error) {
 	val, err := strconv.ParseFloat(s, 64)
 	if err != nil {

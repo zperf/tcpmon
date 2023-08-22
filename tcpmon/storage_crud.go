@@ -12,13 +12,13 @@ import (
 // maxCount indicates the maximum number of entries to be returned, <= 0 means unlimited
 // hasValue indicates whether the returned value contains value
 // prefix can be null, in this case, all key-value pairs are returned.
-func (d *Datastore) GetPrefix(prefix []byte, maxCount int, hasValue bool) ([]KVPair, error) {
+func GetPrefix(db *badger.DB, prefix []byte, maxCount int, hasValue bool) ([]KVPair, error) {
 	if maxCount <= 0 {
 		maxCount = math.MaxInt
 	}
 
 	r := make([]KVPair, 0)
-	err := d.db.View(func(txn *badger.Txn) (err error) {
+	err := db.View(func(txn *badger.Txn) (err error) {
 		err = nil
 		options := badger.DefaultIteratorOptions
 		options.Reverse = true
@@ -56,6 +56,10 @@ func (d *Datastore) GetPrefix(prefix []byte, maxCount int, hasValue bool) ([]KVP
 		return nil, errors.WithStack(err)
 	}
 	return r, nil
+}
+
+func (d *Datastore) GetPrefix(prefix []byte, maxCount int, hasValue bool) ([]KVPair, error) {
+	return GetPrefix(d.db, prefix, maxCount, hasValue)
 }
 
 // GetKeys returns all keys in the database

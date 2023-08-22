@@ -21,6 +21,11 @@ var restoreCmd = &cobra.Command{
 		force := viper.GetBool("force")
 		needPrint := viper.GetBool("print")
 
+		err := os.MkdirAll(output, 0755)
+		if err != nil && !os.IsExist(err) {
+			log.Fatal().Err(err).Msg("Create output directory failed")
+		}
+
 		isEmpty, err := IsDirEmpty(output)
 		if err != nil {
 			log.Fatal().Err(err).Msg("Check output dir failed")
@@ -28,7 +33,7 @@ var restoreCmd = &cobra.Command{
 
 		if force || isEmpty {
 			db, err := badger.Open(badger.DefaultOptions(output).
-				WithLogger(&tcpmon.BadgerLogger{}).
+				WithLogger(&tcpmon.BadgerDbLogger{}).
 				WithCompactL0OnClose(true))
 			if err != nil {
 				log.Fatal().Err(err).Msg("Open db for write failed")

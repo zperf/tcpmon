@@ -30,7 +30,7 @@ type DataStoreConfig struct {
 
 func NewDatastore(initialEpoch uint64, path string, config *DataStoreConfig) *Datastore {
 	options := badger.DefaultOptions(path).
-		WithLogger(&BadgerLogger{}).
+		WithLogger(NewBadgerLogger()).
 		WithInMemory(false).
 		WithCompression(boptions.ZSTD).
 		WithNumGoroutines(2).

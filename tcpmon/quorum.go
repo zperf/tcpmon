@@ -20,7 +20,7 @@ func NewQuorum(ds *Datastore) *Quorum {
 
 	config := memberlist.DefaultLANConfig()
 	config.Events = q
-	config.LogOutput = &MemberlistLogger{}
+	config.LogOutput = NewMemberlistLogger()
 
 	m, err := memberlist.Create(config)
 	if err != nil {

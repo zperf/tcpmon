@@ -26,7 +26,11 @@ func ValidMetricPrefix(s string) bool {
 	return s == PrefixNicMetric || s == PrefixTcpMetric || s == PrefixNetMetric
 }
 
-func GetType(key string) string {
+func ValidPrefix(s string) bool {
+	return ValidMetricPrefix(s) || s == PrefixMember
+}
+
+func GetPrefixType(key string) string {
 	p := strings.IndexRune(key, '/')
 	if p < 0 {
 		return ""
@@ -48,8 +52,15 @@ type KVPair struct {
 	Callback func(err error)
 }
 
+func NewKVPair(key string, value []byte) *KVPair {
+	return &KVPair{
+		Key:   key,
+		Value: value,
+	}
+}
+
 func (p KVPair) ToProto() (proto.Message, error) {
-	kind := GetType(p.Key)
+	kind := GetPrefixType(p.Key)
 	if kind == "" {
 		return nil, errors.Newf("invalid kind: '%v'", kind)
 	}

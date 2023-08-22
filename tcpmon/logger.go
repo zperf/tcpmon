@@ -35,9 +35,6 @@ type LogConfig struct {
 
 	// MaxBackups the max number of rolled files to keep
 	MaxBackups int
-
-	// MaxAge the max age in days to keep a logfile
-	MaxAge int
 }
 
 func InitLogger(config *LogConfig) {
@@ -71,27 +68,29 @@ func newRollingFile(config *LogConfig) io.Writer {
 	return logger
 }
 
-type BadgerLogger struct {
+type BadgerDbLogger struct {
 	log zerolog.Logger
 }
 
-func NewBadgerDbLogger() *BadgerLogger {
-	return &BadgerLogger{log: log.With().Str("mod", "badger").Logger().Level(zerolog.WarnLevel)}
+func NewBadgerLogger() *BadgerDbLogger {
+	return &BadgerDbLogger{
+		log: log.With().Str("mod", "badger").Logger().Level(zerolog.WarnLevel),
+	}
 }
 
-func (b *BadgerLogger) Errorf(format string, args ...interface{}) {
+func (b *BadgerDbLogger) Errorf(format string, args ...interface{}) {
 	b.log.Error().Msgf(strings.TrimSpace(format), args...)
 }
 
-func (b *BadgerLogger) Warningf(format string, args ...interface{}) {
+func (b *BadgerDbLogger) Warningf(format string, args ...interface{}) {
 	b.log.Warn().Msgf(strings.TrimSpace(format), args...)
 }
 
-func (b *BadgerLogger) Infof(format string, args ...interface{}) {
-	log.Info().Str("mod", "badger").Msgf(strings.TrimSpace(format), args...)
+func (b *BadgerDbLogger) Infof(format string, args ...interface{}) {
+	b.log.Info().Msgf(strings.TrimSpace(format), args...)
 }
 
-func (b *BadgerLogger) Debugf(format string, args ...interface{}) {
+func (b *BadgerDbLogger) Debugf(format string, args ...interface{}) {
 	b.log.Debug().Msgf(strings.TrimSpace(format), args...)
 }
 
@@ -106,6 +105,6 @@ func NewMemberlistLogger() *MemberlistLogger {
 }
 
 func (m *MemberlistLogger) Write(p []byte) (int, error) {
-	log.Info().Str("mod", "memberlist").Msg(strings.TrimSpace(string(p)))
+	m.log.Info().Msg(strings.TrimSpace(string(p)))
 	return len(p), nil
 }
