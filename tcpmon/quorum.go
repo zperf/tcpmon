@@ -1,11 +1,13 @@
 package tcpmon
 
 import (
+	"fmt"
 	"net"
 	"time"
 
 	"github.com/hashicorp/memberlist"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/proto"
 )
 
 type Quorum struct {
@@ -13,7 +15,7 @@ type Quorum struct {
 	ds    *Datastore
 }
 
-func NewQuorum(ds *Datastore) *Quorum {
+func NewQuorum(ds *Datastore, mconfig *MonitorConfig) *Quorum {
 	q := &Quorum{
 		ds: ds,
 	}
@@ -21,6 +23,8 @@ func NewQuorum(ds *Datastore) *Quorum {
 	config := memberlist.DefaultLANConfig()
 	config.Events = q
 	config.LogOutput = NewMemberlistLogger()
+	config.BindPort = mconfig.QuorumPort
+	config.AdvertisePort = mconfig.QuorumPort
 
 	m, err := memberlist.Create(config)
 	if err != nil {
@@ -28,10 +32,25 @@ func NewQuorum(ds *Datastore) *Quorum {
 	}
 	q.mlist = m
 
-	address := m.LocalNode().Address()
-	log.Info().Str("hostname", m.LocalNode().String()).
-		Str("address", address).
+	my := m.LocalNode()
+	log.Info().Str("hostname", my.String()).
+		Str("address", my.Address()).
 		Msg("Quorum created")
+
+	// update local meta
+	var memberInfo MemberInfo
+	ipaddr := ParseIpAddr(mconfig.HttpListen)
+	ipaddr.Address = my.Addr.String()
+	memberInfo.HttpListen = fmt.Sprintf("http://%s", ipaddr.String())
+	buf, err := proto.Marshal(&memberInfo)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Marshal member info failed")
+	}
+	my.Meta = buf
+	err = ds.UpdateMember(my.Address(), buf)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Update my member info failed")
+	}
 
 	return q
 }
@@ -45,7 +64,7 @@ func (q *Quorum) Close() {
 
 func (q *Quorum) NotifyJoin(node *memberlist.Node) {
 	log.Info().Str("node", node.Address()).Msgf("Member joined")
-	err := q.ds.AddMember(node.Address())
+	err := q.ds.AddMember(node.Address(), node.Meta)
 	if err != nil {
 		log.Warn().Err(err).Str("node", node.Address()).Msg("Save member failed")
 	}
@@ -60,7 +79,11 @@ func (q *Quorum) NotifyLeave(node *memberlist.Node) {
 }
 
 func (q *Quorum) NotifyUpdate(node *memberlist.Node) {
-	log.Info().Str("node", node.Address()).Msgf("Member data updated")
+	log.Info().Str("node", node.Address()).Msgf("Update member meta data")
+	err := q.ds.UpdateMember(node.Address(), node.Meta)
+	if err != nil {
+		log.Warn().Err(err).Str("node", node.Address()).Msg("Update member failed")
+	}
 }
 
 func (q *Quorum) Local() *memberlist.Node {
@@ -94,4 +117,8 @@ func (q *Quorum) Join(members []string) {
 
 func (q *Quorum) MyIP() net.IP {
 	return net.ParseIP(GetIpFromAddress(q.mlist.LocalNode().Address()))
+}
+
+func (q *Quorum) GetMemberMeta(member string) (map[string]any, error) {
+	return q.ds.GetMemberMeta(member)
 }

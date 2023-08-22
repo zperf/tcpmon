@@ -8,10 +8,10 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 )
 
 type Monitor struct {
+	config     MonitorConfig
 	sockMon    *SocketMonitor
 	ifaceMon   *NicMonitor
 	netstatMon *NetstatMonitor
@@ -20,27 +20,28 @@ type Monitor struct {
 	quorum     *Quorum
 }
 
-func New() (*Monitor, error) {
+type MonitorConfig struct {
+	DataStoreConfig
+
+	QuorumPort      int
+	CollectInterval time.Duration
+	HttpListen      string
+}
+
+func New(config MonitorConfig) (*Monitor, error) {
 	epoch, err := randUint64()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate initial epoch")
 	}
 
-	path := viper.GetString("db")
-	reclaimConfig := &DataStoreConfig{
-		ExpectedKeyCount: viper.GetInt("max-size"),
-		ReclaimBatch:     viper.GetInt("delete-size"),
-		ReclaimInterval:  viper.GetDuration("reclaim-period"),
-		GcInterval:       viper.GetDuration("gc-period"),
-	}
-
-	ds := NewDatastore(epoch, path, reclaimConfig)
+	ds := NewDatastore(epoch, &config.DataStoreConfig)
 	return &Monitor{
+		config:     config,
 		sockMon:    &SocketMonitor{},
 		ifaceMon:   &NicMonitor{},
 		netstatMon: &NetstatMonitor{},
 		datastore:  ds,
-		quorum:     NewQuorum(ds),
+		quorum:     NewQuorum(ds, &config),
 	}, nil
 }
 
@@ -81,11 +82,11 @@ func (m *Monitor) Collect(now time.Time, tx chan<- *KVPair) {
 	wg.Wait()
 }
 
-func (m *Monitor) Run(ctx context.Context, interval time.Duration, addr string) error {
-	ticker := time.NewTicker(interval)
+func (m *Monitor) Run(ctx context.Context) error {
+	ticker := time.NewTicker(m.config.CollectInterval)
 	tx := m.datastore.Tx()
 
-	m.startHttpServer(addr)
+	m.startHttpServer(m.config.HttpListen)
 
 	initialMembers, err := m.datastore.GetMemberAddressList()
 	if err != nil {

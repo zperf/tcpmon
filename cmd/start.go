@@ -59,7 +59,18 @@ var startCmd = &cobra.Command{
 			Msg("Config loaded")
 
 		// create and start monitor
-		m, err := tcpmon.New()
+		m, err := tcpmon.New(tcpmon.MonitorConfig{
+			CollectInterval: viper.GetDuration("collect-interval"),
+			HttpListen:      viper.GetString("listen"),
+			QuorumPort:      viper.GetInt("quorum-port"),
+			DataStoreConfig: tcpmon.DataStoreConfig{
+				Path:            viper.GetString("db"),
+				MaxSize:         viper.GetInt("db-max-size"),
+				GcInterval:      viper.GetDuration("db-gc-interval"),
+				ReclaimBatch:    viper.GetInt("reclaim-batch"),
+				ReclaimInterval: viper.GetDuration("reclaim-interval"),
+			},
+		})
 		if err != nil {
 			log.Fatal().Err(err).Msg("Create tcpmon failed")
 		}
@@ -67,7 +78,7 @@ var startCmd = &cobra.Command{
 		ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 		defer stop()
 
-		err = m.Run(ctx, viper.GetDuration("collect-interval"), viper.GetString("listen"))
+		err = m.Run(ctx)
 		if err != nil {
 			log.Fatal().Err(err).Msg("failed to run")
 		}
@@ -75,19 +86,26 @@ var startCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(startCmd)
-
 	// monitor flags
 	startCmd.PersistentFlags().DurationP("collect-interval", "i", time.Second, "Metric collection interval")
 	startCmd.PersistentFlags().StringP("listen", "l", "0.0.0.0:6789", "HTTP server listening at this address")
+	startCmd.PersistentFlags().IntP("quorum-port", "q", 6790, "Quorum bind and advertised port")
 
-	// logging flags
-	startCmd.PersistentFlags().BoolP("verbose", "v", false, "Verbose mode")
-	startCmd.PersistentFlags().String("log-level", "info", "log level")
-	startCmd.PersistentFlags().String("log-dir", "/tmp/tcpmon/log", "The log directory")
-	startCmd.PersistentFlags().String("log-filename", "tcpmon.log", "The file name of logs")
-	startCmd.PersistentFlags().Int("log-max-size", 10, "Maximum size of each log file")
-	startCmd.PersistentFlags().Int("log-max-count", 5, "Maximum log files to keep")
+	// monitor command flags
+	startCmd.PersistentFlags().String("cmd-ifconfig", "/usr/bin/ifconfig", "The path of 'ifconfig'")
+	startCmd.PersistentFlags().String("cmd-ss", "/usr/bin/ss", "The path of 'ss'")
+	startCmd.PersistentFlags().String("cmd-ss-arg", "-4ntipmoHna", "Parameters when executing 'ss'")
+	startCmd.PersistentFlags().String("cmd-netstat", "/usr/bin/netstat", "The path of 'netstat'")
+	startCmd.PersistentFlags().String("cmd-netstat-arg", "-s", "Parameters when executing 'netstat'")
+	startCmd.PersistentFlags().DurationP("cmd-timeout", "c", time.Second, "Command execution timeout")
+
+	// db flags
+	startCmd.PersistentFlags().String("db", "/tmp/tcpmon/db", "Database path")
+	startCmd.PersistentFlags().Int("db-max-size", 10000, "Maximum number of records in the database")
+	startCmd.PersistentFlags().Duration("db-gc-interval", 10*time.Minute, "BadgerDB value GC interval")
+	startCmd.PersistentFlags().Int("reclaim-batch", 2000, "Maximum number of reclaiming per batch")
+	startCmd.PersistentFlags().Duration("reclaim-interval", 3*time.Minute, "Reclaiming interval")
 
 	fatalIf(viper.BindPFlags(startCmd.PersistentFlags()))
+	rootCmd.AddCommand(startCmd)
 }

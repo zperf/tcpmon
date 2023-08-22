@@ -22,14 +22,15 @@ type Datastore struct {
 }
 
 type DataStoreConfig struct {
-	ExpectedKeyCount int
-	ReclaimBatch     int
-	ReclaimInterval  time.Duration
-	GcInterval       time.Duration
+	Path            string
+	MaxSize         int
+	ReclaimBatch    int
+	ReclaimInterval time.Duration
+	GcInterval      time.Duration
 }
 
-func NewDatastore(initialEpoch uint64, path string, config *DataStoreConfig) *Datastore {
-	options := badger.DefaultOptions(path).
+func NewDatastore(initialEpoch uint64, config *DataStoreConfig) *Datastore {
+	options := badger.DefaultOptions(config.Path).
 		WithLogger(NewBadgerLogger()).
 		WithInMemory(false).
 		WithCompression(boptions.ZSTD).
@@ -57,7 +58,7 @@ func NewDatastore(initialEpoch uint64, path string, config *DataStoreConfig) *Da
 	d.wait.Add(3)
 
 	go d.writer(initialEpoch)
-	go d.autoReclaim(config.ExpectedKeyCount, config.ReclaimBatch)
+	go d.autoReclaim(config.MaxSize, config.ReclaimBatch)
 	go d.autoGC()
 	return d
 }

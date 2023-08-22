@@ -10,12 +10,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func GetMember(cluster *Quorum) func(c *gin.Context) {
+func GetMember(q *Quorum) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		members := make([]string, 0)
-		for _, member := range cluster.Members() {
-			members = append(members, member.Address())
+		members := make(map[string]any)
+		for _, member := range q.Members() {
+			addr := member.Address()
+			minfo, err := q.GetMemberMeta(addr)
+			if err != nil {
+				c.AbortWithStatusJSON(http.StatusInternalServerError, ErrorJSON(err))
+				return
+			}
+			members[member.Address()] = minfo
 		}
+
 		c.JSON(http.StatusOK, gin.H{
 			"len":     len(members),
 			"members": members,

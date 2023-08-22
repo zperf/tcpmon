@@ -3,6 +3,7 @@ package tcpmon
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"fmt"
 	"os"
 	"regexp"
 	"strconv"
@@ -69,4 +70,30 @@ func GetIpFromAddress(s string) string {
 		return s
 	}
 	return s[:p]
+}
+
+type IpAddr struct {
+	Address string
+	Port    int
+}
+
+func ParseIpAddr(s string) *IpAddr {
+	p := strings.Index(s, ":")
+	if p == -1 {
+		return nil
+	}
+
+	port, err := strconv.ParseInt(s[p+1:], 10, 32)
+	if err != nil {
+		return nil
+	}
+
+	return &IpAddr{
+		Address: s[:p],
+		Port:    int(port),
+	}
+}
+
+func (a *IpAddr) String() string {
+	return fmt.Sprintf("%s:%d", a.Address, a.Port)
 }

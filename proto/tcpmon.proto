@@ -165,4 +165,6 @@ message NetstatMetric {
   uint32 udp_send_buffer_errors = 24;
 }
 
-message MemberInfo {}
+message MemberInfo {
+  string http_listen = 1;
+}

@@ -23,10 +23,10 @@ func TestStorage(t *testing.T) {
 	s := &StorageTestSuite{
 		path: "/tmp/tcpmon-test",
 		periodOptions: &DataStoreConfig{
-			ExpectedKeyCount: 10000,
-			ReclaimBatch:     100000,
-			ReclaimInterval:  2 * time.Second,
-			GcInterval:       5 * time.Minute,
+			MaxSize:         10000,
+			ReclaimBatch:    100000,
+			ReclaimInterval: 2 * time.Second,
+			GcInterval:      5 * time.Minute,
 		},
 	}
 	suite.Run(t, s)
@@ -119,7 +119,7 @@ func (s *StorageTestSuite) TestPeriodicReclaim() {
 	defer ds.Close()
 
 	tx := ds.Tx()
-	for i := 0; i < s.periodOptions.ExpectedKeyCount; i++ {
+	for i := 0; i < s.periodOptions.MaxSize; i++ {
 		tx <- &KVPair{
 			Key:   NewKey(PrefixNicMetric),
 			Value: nil,
@@ -144,7 +144,7 @@ func (s *StorageTestSuite) TestPeriodicReclaim() {
 	size = ds.GetSize(nil)
 	log.Info().Int("size", size).Msg("reclaim done")
 
-	s.Assert().GreaterOrEqual(s.periodOptions.ExpectedKeyCount, size)
+	s.Assert().GreaterOrEqual(s.periodOptions.MaxSize, size)
 }
 
 // writeBarrier waits for write complete
