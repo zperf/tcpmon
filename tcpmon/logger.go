@@ -54,6 +54,7 @@ func InitLogger(config *LogConfig) {
 		With().
 		Timestamp().
 		Caller().
+		Stack().
 		Logger()
 }
 
