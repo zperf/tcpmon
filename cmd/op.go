@@ -42,15 +42,16 @@ var opBackupAllCmd = &cobra.Command{
 		dir := "tcpmon-dump-" + date
 
 		fmt.Println("#!/usr/bin/env bash")
-		fmt.Println("rm -rf " + dir)
+		fmt.Println("set -x")
 		fmt.Println("mkdir -p " + dir)
-		fmt.Println("pushd " + dir)
+		fmt.Println("pushd " + dir + " || exit")
 		for _, memberInfo := range rsp["members"].(map[string]any) {
 			m := memberInfo.(map[string]any)
 			fmt.Printf("curl -JfSsLO %s/backup\n", m["httpListen"])
 		}
-		fmt.Println("popd")
+		fmt.Println("popd || exit")
 		fmt.Printf("tar -czvf %s.tar.gz %s\n", dir, dir)
+		fmt.Println("rm -rf " + dir)
 	},
 }
 
