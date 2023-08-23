@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/cockroachdb/errors"
 	"github.com/go-cmd/cmd"
@@ -249,9 +248,7 @@ func ParseSSOutput(t *TcpMetric, out []string) {
 
 	s := &SocketMetric{}
 	for _, line := range out {
-		fields := strings.FieldsFunc(line, func(c rune) bool {
-			return unicode.IsSpace(c)
-		})
+		fields := strings.FieldsFunc(line, SplitSpace)
 
 		var exist bool
 		if len(fields) == 0 {
