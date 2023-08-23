@@ -1,4 +1,4 @@
-package tcpmon_test
+package test
 
 import (
 	"strings"

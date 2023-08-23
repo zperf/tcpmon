@@ -1,9 +1,11 @@
-package tcpmon
+package test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
+
+	"github.com/zperf/tcpmon/tcpmon"
 )
 
 type UtilTestSuite struct {
@@ -16,11 +18,11 @@ func TestUtil(t *testing.T) {
 
 func (s *UtilTestSuite) TestParseUint32() {
 	assert := s.Assert()
-	val, err := ParseUint32("123")
+	val, err := tcpmon.ParseUint32("123")
 	assert.NoError(err)
 	assert.Equal(uint32(123), val)
 
-	val, err = ParseUint32("")
+	val, err = tcpmon.ParseUint32("")
 	assert.Error(err)
 	assert.Equal(uint32(0), val)
 }
