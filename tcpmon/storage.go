@@ -50,12 +50,12 @@ func NewDataStore(initialEpoch uint64, config *DataStoreConfig) *DataStore {
 	options := badger.DefaultOptions(config.Path).
 		WithLogger(NewBadgerLogger()).
 		WithInMemory(false).
-		WithCompression(boptions.Snappy).
+		WithCompression(boptions.ZSTD).
 		WithNumGoroutines(2).
 		WithNumMemtables(1).
-		WithMemTableSize(16 << 20).
-		WithCompactL0OnClose(true).
-		WithValueLogFileSize(16 << 20) // MB
+		WithMemTableSize(8 << 20).
+		WithBlockSize(4 << 20).
+		WithCompactL0OnClose(true)
 
 	db, err := badger.Open(options)
 	if err != nil {
