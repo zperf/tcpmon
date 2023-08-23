@@ -58,7 +58,7 @@ func GetMetrics(ds *DataStore) func(c *gin.Context) {
 
 		if kind == "" {
 			// without prefix, iterate over all
-			keys, err := ds.GetKeys()
+			keys, err := ds.GetMetrics()
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, ErrorJSON(err))
 			}
