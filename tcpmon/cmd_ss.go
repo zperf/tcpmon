@@ -54,7 +54,7 @@ func isRate(s string) bool {
 	}
 }
 
-func setRate(m *SocketMetric, field string, value uint64) {
+func setRate(m *SocketMetric, field string, value float64) {
 	switch field {
 	case "pacing_rate":
 		m.PacingRate = value
@@ -294,16 +294,29 @@ func ParseSSOutput(t *TcpMetric, out []string) {
 					// rate handling: pacing_rate, delivery_rate and send
 					if isRate(field) {
 						lastRateName = field
-					} else if lastRateName != "" && strings.HasSuffix(field, "bps") {
-						var rate uint64
-						if strings.HasSuffix(field, "Gbps") {
-							rateG, _ := ParseFloat64(strings.TrimSuffix(field, "Gbps"))
-							rate = uint64(rateG * 1000.0 * 1000.0)
-						} else if strings.HasSuffix(field, "Mbps") {
-							rateM, _ := ParseFloat64(strings.TrimSuffix(field, "Mbps"))
-							rate = uint64(rateM * 1000.0)
+					} else if lastRateName != "" && strings.HasSuffix(strings.ToLower(field), "bps") {
+						field = strings.ToLower(field)
+						field = strings.TrimSuffix(field, "bps")
+
+						var rate float64
+						carry := 1000.0
+						if strings.HasSuffix(strings.ToLower(field), "i") {
+							carry = 1024.0
+							field = strings.TrimSuffix(field, "i")
+						}
+
+						// Base in Kbps or KiBps
+						if strings.HasSuffix(field, "g") {
+							rateG, _ := ParseFloat64(strings.TrimSuffix(field, "g"))
+							rate = rateG * carry * carry
+						} else if strings.HasSuffix(field, "m") {
+							rateM, _ := ParseFloat64(strings.TrimSuffix(field, "m"))
+							rate = rateM * carry
+						} else if strings.HasSuffix(field, "k") {
+							rate, _ = ParseFloat64(strings.TrimSuffix(field, "k"))
 						} else {
-							rate, _ = ParseUint64(strings.TrimSuffix(field, "bps"))
+							rate, _ = ParseFloat64(field)
+							rate /= carry
 						}
 						setRate(s, lastRateName, rate)
 					} else if strings.Contains(field, ":(") {
