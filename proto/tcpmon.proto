@@ -118,15 +118,15 @@ message TcpMetric {
 
 message IfaceMetric {
   string name = 1;
-  uint32 rx_errors = 2;
-  uint32 rx_dropped = 3;
-  uint32 rx_overruns = 4;
-  uint32 rx_frame = 5;
-  uint32 tx_errors = 6;
-  uint32 tx_dropped = 7;
-  uint32 tx_overruns = 8;
-  uint32 tx_carrier = 9;
-  uint32 tx_collisions = 10;
+  uint64 rx_errors = 2;
+  uint64 rx_dropped = 3;
+  uint64 rx_overruns = 4;
+  uint64 rx_frame = 5;
+  uint64 tx_errors = 6;
+  uint64 tx_dropped = 7;
+  uint64 tx_overruns = 8;
+  uint64 tx_carrier = 9;
+  uint64 tx_collisions = 10;
 }
 
 message NicMetric {
