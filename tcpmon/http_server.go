@@ -30,7 +30,7 @@ func GetBackup(mon *Monitor) func(c *gin.Context) {
 		c.Writer.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 		_, err := mon.datastore.Backup(c.Writer, 0)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, ErrorJSON(err))
+			c.AbortWithStatusJSON(http.StatusInternalServerError, ErrorJSON(err))
 			return
 		}
 	}
@@ -41,7 +41,7 @@ func GetMetric(ds *DataStore) func(c *gin.Context) {
 		metricName := c.Param("name")
 		p, err := ds.Get(strings.TrimPrefix(metricName, "/"))
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, ErrorJSON(err))
+			c.AbortWithStatusJSON(http.StatusInternalServerError, ErrorJSON(err))
 			return
 		}
 		c.JSON(http.StatusOK, p.ToJSON())
@@ -52,7 +52,8 @@ func GetMetrics(ds *DataStore) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		kind := c.Query("type")
 		if !ValidMetricPrefix(kind) && kind != "" {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": errors.Newf("invalid type: %v", kind)})
+			c.AbortWithStatusJSON(http.StatusInternalServerError,
+				ErrorJSON(errors.Newf("invalid type: %v", kind)))
 			return
 		}
 
@@ -60,7 +61,8 @@ func GetMetrics(ds *DataStore) func(c *gin.Context) {
 			// without prefix, iterate over all
 			keys, err := ds.GetMetrics()
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, ErrorJSON(err))
+				c.AbortWithStatusJSON(http.StatusInternalServerError, ErrorJSON(err))
+				return
 			}
 			c.JSON(http.StatusOK, gin.H{
 				"len":  len(keys),
@@ -70,7 +72,7 @@ func GetMetrics(ds *DataStore) func(c *gin.Context) {
 			// with prefix
 			pairs, err := ds.GetPrefix([]byte(kind), 0, false)
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, ErrorJSON(errors.WithStack(err)))
+				c.AbortWithStatusJSON(http.StatusInternalServerError, ErrorJSON(err))
 				return
 			}
 
