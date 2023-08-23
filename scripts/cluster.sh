@@ -8,7 +8,7 @@ docker ps -a | grep 'tcpmon[0-9]' | awk '{print $1}' | parallel docker stop
 docker ps -a | grep 'tcpmon[0-9]' | awk '{print $1}' | parallel docker rm
 
 mkdir -p data/tcpmon1/log
-docker run --name tcpmon1 -d --net=tcpmon -v "$(pwd)/bin:$(pwd)/bin" -w "$(pwd)/bin" \
+docker run --name tcpmon1 -d --net=tcpmon -p 6789:6789 -v "$(pwd)/bin:$(pwd)/bin" -w "$(pwd)/bin" \
 -v "$(pwd)/data/tcpmon1/log:/tmp/tcpmon/log" \
 "tcpmon:runtime$IMAGE_DISTRO" ./tcpmon-linux start
 
