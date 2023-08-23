@@ -21,17 +21,17 @@ func ParseIfconfigOutput(nics *NicMetric, out []string) {
 			r.Name = fields[0]
 		} else if strings.Contains(line, "RX errors ") {
 			fields := strings.FieldsFunc(line, SplitSpace)
-			r.RxErrors, _ = ParseUint32(fields[2])
-			r.RxDropped, _ = ParseUint32(fields[4])
-			r.RxOverruns, _ = ParseUint32(fields[6])
-			r.RxFrame, _ = ParseUint32(fields[8])
+			r.RxErrors, _ = ParseUint64(fields[2])
+			r.RxDropped, _ = ParseUint64(fields[4])
+			r.RxOverruns, _ = ParseUint64(fields[6])
+			r.RxFrame, _ = ParseUint64(fields[8])
 		} else if strings.Contains(line, "TX errors ") {
 			fields := strings.FieldsFunc(line, SplitSpace)
-			r.TxErrors, _ = ParseUint32(fields[2])
-			r.TxDropped, _ = ParseUint32(fields[4])
-			r.TxOverruns, _ = ParseUint32(fields[6])
-			r.TxCarrier, _ = ParseUint32(fields[8])
-			r.TxCollisions, _ = ParseUint32(fields[10])
+			r.TxErrors, _ = ParseUint64(fields[2])
+			r.TxDropped, _ = ParseUint64(fields[4])
+			r.TxOverruns, _ = ParseUint64(fields[6])
+			r.TxCarrier, _ = ParseUint64(fields[8])
+			r.TxCollisions, _ = ParseUint64(fields[10])
 			nics.Ifaces = append(nics.Ifaces, r)
 		}
 	}
