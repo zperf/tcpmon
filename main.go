@@ -8,5 +8,5 @@ import (
 )
 
 func main() {
-	cmd.Execute(strings.Join(os.Args[1:], " ") != "config default")
+	cmd.Execute(strings.Join(os.Args[1:], " "))
 }
