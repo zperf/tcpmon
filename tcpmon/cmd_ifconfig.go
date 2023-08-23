@@ -20,13 +20,13 @@ func ParseIfconfigOutput(nics *NicMetric, out []string) {
 			r = &IfaceMetric{}
 			r.Name = fields[0]
 		} else if strings.Contains(line, "RX errors ") {
-			fields := strings.FieldsFunc(line, splitSpace)
+			fields := strings.FieldsFunc(line, SplitSpace)
 			r.RxErrors, _ = ParseUint32(fields[2])
 			r.RxDropped, _ = ParseUint32(fields[4])
 			r.RxOverruns, _ = ParseUint32(fields[6])
 			r.RxFrame, _ = ParseUint32(fields[8])
 		} else if strings.Contains(line, "TX errors ") {
-			fields := strings.FieldsFunc(line, splitSpace)
+			fields := strings.FieldsFunc(line, SplitSpace)
 			r.TxErrors, _ = ParseUint32(fields[2])
 			r.TxDropped, _ = ParseUint32(fields[4])
 			r.TxOverruns, _ = ParseUint32(fields[6])

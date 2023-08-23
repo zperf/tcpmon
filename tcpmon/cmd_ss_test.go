@@ -12,7 +12,8 @@ import (
 func (s *CommandParserTestSuite) TestParseSS() {
 	assert := s.Assert()
 
-	out := `LISTEN  0       4096     127.0.0.1:53000      0.0.0.0:*
+	out := `State      Recv-Q Send-Q Local Address:Port               Peer Address:Port
+LISTEN  0       4096     127.0.0.1:53000      0.0.0.0:*
 skmem:(r0,rb131072,t0,tb16384,f0,w0,o0,bl0,d0) cubic cwnd:10
 LISTEN  0       4096     127.0.0.1:631        0.0.0.0:*
 skmem:(r0,rb131072,t0,tb16384,f0,w0,o0,bl0,d0) cubic cwnd:10
@@ -22,9 +23,7 @@ ESTAB   0       0        127.0.0.1:41317    127.0.0.1:40554
 timer:(keepalive,11sec,0) skmem:(r0,rb131072,t0,tb2626560,f0,w0,o0,bl0,d276) ts sack cubic wscale:7,7 rto:206.666 rtt:6.562/12.05 ato:40 mss:32768 pmtu:65535 rcvmss:536 advmss:65483 cwnd:10 bytes_sent:312 bytes_acked:312 bytes_received:2099 segs_out:1109 segs_in:1112 data_segs_out:4 data_segs_in:4 send 399487961bps lastsnd:12722864 lastrcv:12722877 lastack:3530 pacing_rate 798975920bps delivery_rate 29127111104bps delivered:5 app_limited busy:53ms rcv_space:65483 rcv_ssthresh:65483 minrtt:0.009 snd_wnd:65536
 `
 
-	lines := strings.FieldsFunc(out, func(r rune) bool {
-		return r == '\n'
-	})
+	lines := strings.FieldsFunc(out, SplitNewline)
 
 	var t TcpMetric
 	t.Timestamp = timestamppb.New(time.Now())

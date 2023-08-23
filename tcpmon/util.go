@@ -109,6 +109,12 @@ func FileExists(s string) (bool, error) {
 	return true, nil
 }
 
-func splitSpace(c rune) bool {
-	return c == ' '
+var SplitSpace = SplitChar(' ')
+
+var SplitNewline = SplitChar('\n')
+
+func SplitChar(s rune) func(rune) bool {
+	return func(c rune) bool {
+		return c == s
+	}
 }

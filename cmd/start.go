@@ -73,7 +73,7 @@ func init() {
 	startCmd.PersistentFlags().String("cmd-ifconfig-arg", "", "Parameters when executing 'ifconfig'")
 	startCmd.PersistentFlags().String("cmd-ss", "/usr/bin/ss", "The path of 'ss'")
 	startCmd.PersistentFlags().String("cmd-ss2", "/usr/sbin/ss", "The path of 'ss'")
-	startCmd.PersistentFlags().String("cmd-ss-arg", "-4ntipmoHna", "Parameters when executing 'ss'")
+	startCmd.PersistentFlags().String("cmd-ss-arg", "-4ntipmona", "Parameters when executing 'ss'")
 	startCmd.PersistentFlags().String("cmd-netstat", "/usr/bin/netstat", "The path of 'netstat'")
 	startCmd.PersistentFlags().String("cmd-netstat-arg", "-s", "Parameters when executing 'netstat'")
 	startCmd.PersistentFlags().DurationP("cmd-timeout", "c", time.Second, "Command execution timeout")
