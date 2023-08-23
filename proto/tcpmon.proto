@@ -40,7 +40,7 @@ message SocketMemoryUsage {
 
 message TimerInfo {
   string name = 1; // the name of timer
-  uint64 expire_time_microsecond = 2;
+  uint64 expire_time_us = 2;
   uint32 retrans = 3;
 }
 
