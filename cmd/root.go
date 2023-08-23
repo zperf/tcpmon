@@ -18,7 +18,7 @@ var rootCmd = &cobra.Command{
 	Short: "Tcpmon is a portable local network monitor for Linux",
 }
 
-func Execute(loadConfig bool) {
+func Execute(cmdline string) {
 	// init viper
 	viper.AutomaticEnv()
 	viper.AllowEmptyEnv(true)
@@ -29,7 +29,7 @@ func Execute(loadConfig bool) {
 	viper.AddConfigPath("$HOME/.tcpmon")
 
 	// read config file
-	if loadConfig {
+	if !strings.HasPrefix(cmdline, "config default") {
 		err := viper.ReadInConfig()
 		if err != nil {
 			// config file not found, is must be a dev env
@@ -45,9 +45,11 @@ func Execute(loadConfig bool) {
 				log.Fatal().Err(err).Msg("failed to read config file")
 			}
 		}
-		log.Info().Str("configFile", viper.ConfigFileUsed()).
-			Str("logDir", viper.GetString("log-dir")).
-			Msg("Config loaded")
+		if strings.HasPrefix(cmdline, "start") {
+			log.Info().Str("configFile", viper.ConfigFileUsed()).
+				Str("logDir", viper.GetString("log-dir")).
+				Msg("Config loaded")
+		}
 	}
 
 	// init logger
