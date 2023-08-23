@@ -204,16 +204,16 @@ func parseInfos(m *SocketMetric, s string) {
 				ExpireTime := strings.Split(strings.TrimSuffix(fields[1], "sec"), "min")
 				ExpireTimeMin, _ := ParseUint64(ExpireTime[0])
 				ExpireTimeSec, _ := ParseUint64(ExpireTime[1])
-				t.ExpireTimeMicrosecond = ExpireTimeMin*60000000 + ExpireTimeSec*1000000
+				t.ExpireTimeUs = ExpireTimeMin*60000000 + ExpireTimeSec*1000000
 			} else if strings.HasSuffix(fields[1], "min") {
 				ExpireTimeMin, _ := ParseUint64(strings.TrimSuffix(fields[1], "min"))
-				t.ExpireTimeMicrosecond = ExpireTimeMin * 60000000
+				t.ExpireTimeUs = ExpireTimeMin * 60000000
 			} else if strings.HasSuffix(fields[1], "sec") {
 				ExpireTimeSec, _ := ParseUint64(strings.TrimSuffix(fields[1], "sec"))
-				t.ExpireTimeMicrosecond = ExpireTimeSec * 1000000
+				t.ExpireTimeUs = ExpireTimeSec * 1000000
 			} else if strings.HasSuffix(fields[1], "ms") {
 				ExpireTimeMillisecond, _ := ParseFloat64(strings.TrimSuffix(fields[1], "ms"))
-				t.ExpireTimeMicrosecond = uint64(ExpireTimeMillisecond * 1000)
+				t.ExpireTimeUs = uint64(ExpireTimeMillisecond * 1000)
 			}
 			t.Retrans, _ = ParseUint32(fields[2])
 		}
