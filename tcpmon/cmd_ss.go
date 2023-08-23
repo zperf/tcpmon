@@ -192,7 +192,9 @@ func parseInfos(m *SocketMetric, s string) {
 		skmem.WmemQueued, _ = ParseUint32(strings.TrimPrefix(fields[5], "w"))
 		skmem.OptMem, _ = ParseUint32(strings.TrimPrefix(fields[6], "o"))
 		skmem.BackLog, _ = ParseUint32(strings.TrimPrefix(fields[7], "bl"))
-		skmem.SockDrop, _ = ParseUint32(strings.TrimPrefix(fields[8], "d"))
+		if len(fields) > 8 {
+			skmem.SockDrop, _ = ParseUint32(strings.TrimPrefix(fields[8], "d"))
+		}
 		m.Skmem = &skmem
 	} else if name == "timer" {
 		fields := strings.FieldsFunc(s[p+2:len(s)-1], func(r rune) bool {
