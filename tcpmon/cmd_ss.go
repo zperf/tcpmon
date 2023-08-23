@@ -271,6 +271,10 @@ func ParseSSOutput(t *TcpMetric, out []string) {
 					s.Cubic = true
 				case "app_limited":
 					s.AppLimited = true
+				case "ecn":
+					s.Ecn = true
+				case "ecnseen":
+					s.Ecnseen = true
 				default:
 					// rate handling: pacing_rate, delivery_rate and send
 					if isRate(field) {
