@@ -16,7 +16,7 @@ release: proto
 	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -gcflags "all=-N -l" -o bin/tcpmon-aarch64 github.com/zperf/tcpmon
 
 .PHONY: proto
-proto: docker
+proto:
 	docker run -t --rm --user ${shell id -u}:${shell id -g} -v ${ROOT_DIR}:${ROOT_DIR} -w ${ROOT_DIR} tcpmon:builder protoc --go_out=. --go_opt=Mproto/tcpmon.proto=./tcpmon proto/tcpmon.proto
 
 .PHONY: check
