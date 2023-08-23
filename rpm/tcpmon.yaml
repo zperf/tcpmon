@@ -4,7 +4,7 @@ cmd-ifconfig2: /usr/sbin/ifconfig
 cmd-netstat: /usr/bin/netstat
 cmd-netstat-arg: -s
 cmd-ss: /usr/bin/ss
-cmd-ss-arg: -4ntipmoHna
+cmd-ss-arg: -4ntipmona
 cmd-ss2: /usr/sbin/ss
 cmd-timeout: 1s
 collect-interval: 1s
