@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog/log"
 )
 
@@ -24,6 +25,7 @@ func randUint64() (uint64, error) {
 func ParseUint32(s string) (uint32, error) {
 	val, err := strconv.ParseUint(s, 10, 32)
 	if err != nil {
+		log.Warn().Err(errors.WithStack(err)).Msg("Parse failed")
 		return 0, err
 	}
 	return uint32(val), nil
@@ -32,6 +34,7 @@ func ParseUint32(s string) (uint32, error) {
 func ParseUint64(s string) (uint64, error) {
 	val, err := strconv.ParseUint(s, 10, 64)
 	if err != nil {
+		log.Warn().Err(errors.WithStack(err)).Msg("Parse failed")
 		return 0, err
 	}
 	return val, nil
@@ -40,6 +43,7 @@ func ParseUint64(s string) (uint64, error) {
 func ParseFloat64(s string) (float64, error) {
 	val, err := strconv.ParseFloat(s, 64)
 	if err != nil {
+		log.Warn().Err(errors.WithStack(err)).Msg("Parse failed")
 		return 0, err
 	}
 	return val, nil
@@ -85,6 +89,7 @@ func ParseIpAddr(s string) *IpAddr {
 
 	port, err := strconv.ParseInt(s[p+1:], 10, 32)
 	if err != nil {
+		log.Warn().Err(errors.WithStack(err)).Msg("Parse failed")
 		return nil
 	}
 
