@@ -3,6 +3,7 @@ package tcpmon
 import (
 	"io"
 	"math"
+	"strings"
 
 	"github.com/cockroachdb/errors"
 	"github.com/dgraph-io/badger/v4"
@@ -81,6 +82,22 @@ func (d *DataStore) GetKeys() ([]string, error) {
 		return nil, err
 	}
 	return keys, nil
+}
+
+func (d *DataStore) GetMetrics() ([]string, error) {
+	keys, err := d.GetKeys()
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	metrics := make([]string, 0)
+	for _, k := range keys {
+		if !strings.HasPrefix(k, PrefixMember) {
+			metrics = append(metrics, k)
+		}
+	}
+
+	return metrics, nil
 }
 
 func (d *DataStore) Backup(w io.Writer, since uint64) (uint64, error) {
