@@ -66,9 +66,9 @@ message SocketMetric {
   bool cubic = 13;
   bool app_limited = 14;
 
-  uint64 pacing_rate = 15;
-  uint64 delivery_rate = 16;
-  uint64 send = 17;
+  double pacing_rate = 15;
+  double delivery_rate = 16;
+  double send = 17;
 
   uint32 snd_wscale = 18; // window scaling
   uint32 rcv_wscale = 19;

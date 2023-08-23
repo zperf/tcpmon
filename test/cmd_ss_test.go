@@ -176,12 +176,12 @@ timer:(keepalive,11sec,0) skmem:(r0,rb131072,t0,tb2626560,f0,w0,o0,bl0,d276) ts 
 	assert.Equal(uint32(12722877), t.Sockets[3].Lastrcv)
 	assert.Equal(uint32(3530), t.Sockets[3].Lastack)
 
-	assert.Equal(uint64(594026739), t.Sockets[2].Send)
-	assert.Equal(uint64(1187918880), t.Sockets[2].PacingRate)
-	assert.Equal(uint64(23831272720), t.Sockets[2].DeliveryRate)
-	assert.Equal(uint64(399487961), t.Sockets[3].Send)
-	assert.Equal(uint64(798975920), t.Sockets[3].PacingRate)
-	assert.Equal(uint64(29127111104), t.Sockets[3].DeliveryRate)
+	assert.Equal(594026.739, t.Sockets[2].Send)
+	assert.Equal(1187918.880, t.Sockets[2].PacingRate)
+	assert.Equal(23831272.720, t.Sockets[2].DeliveryRate)
+	assert.Equal(399487.961, t.Sockets[3].Send)
+	assert.Equal(798975.920, t.Sockets[3].PacingRate)
+	assert.Equal(29127111.104, t.Sockets[3].DeliveryRate)
 
 	assert.Equal(uint32(8), t.Sockets[2].Delivered)
 	assert.Equal(uint32(53), t.Sockets[2].BusyMs)
