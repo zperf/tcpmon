@@ -10,7 +10,7 @@ cmd-timeout: 1s
 collect-interval: 1s
 db: /var/lib/tcpmon
 db-gc-interval: 10m0s
-db-max-size: 30000
+db-max-size: 2000000
 disable-console: true
 listen: 0.0.0.0:6789
 log-dir: /var/log/tcpmon
