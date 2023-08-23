@@ -123,6 +123,12 @@ func setMetric(m *SocketMetric, field string) {
 	case "ato":
 		m.Ato, _ = ParseFloat64(valueStr)
 		return
+	case "bytes_acked":
+		m.BytesAcked, _ = ParseUint64(valueStr)
+		return
+	case "bytes_received":
+		m.BytesReceived, _ = ParseUint64(valueStr)
+		return
 	}
 
 	value, err := ParseUint32(valueStr)
@@ -143,10 +149,6 @@ func setMetric(m *SocketMetric, field string) {
 		m.Cwnd = value
 	case "bytes_sent":
 		m.BytesSent = value
-	case "bytes_acked":
-		m.BytesAcked = value
-	case "bytes_received":
-		m.BytesReceived = value
 	case "data_segs_out":
 		m.DataSegsOut = value
 	case "data_segs_in":
