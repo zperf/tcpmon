@@ -233,6 +233,16 @@ func parseInfos(m *SocketMetric, s string) {
 }
 
 func ParseSSOutput(t *TcpMetric, out []string) {
+	if len(out) == 0 {
+		log.Fatal().Msg("Command 'ss' outputs empty")
+		return
+	}
+
+	header := out[0]
+	if regexpcache.MustCompile(`State\s+Recv-Q\s+Send-Q`).Match([]byte(header)) {
+		out = out[1:]
+	}
+
 	s := &SocketMetric{}
 	for _, line := range out {
 		fields := strings.FieldsFunc(line, func(c rune) bool {
