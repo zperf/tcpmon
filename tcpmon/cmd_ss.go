@@ -120,6 +120,9 @@ func setMetric(m *SocketMetric, field string) {
 	case "sndbuf_limited":
 		m.SndbufLimited, _ = ParseUint32(getFirstNumberFromMess(valueStr))
 		return
+	case "ato":
+		m.Ato, _ = ParseFloat64(valueStr)
+		return
 	}
 
 	value, err := ParseUint32(valueStr)
@@ -128,8 +131,6 @@ func setMetric(m *SocketMetric, field string) {
 		return
 	}
 	switch key {
-	case "ato":
-		m.Ato = value
 	case "mss":
 		m.Mss = value
 	case "pmtu":

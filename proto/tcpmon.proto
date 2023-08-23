@@ -80,7 +80,7 @@ message SocketMetric {
   uint32 retrans_now = 25;
   uint32 retrans_total = 26;
 
-  uint32 ato = 30;
+  double ato = 30;
   uint32 mss = 31;
   uint32 pmtu = 32;
   uint32 rcvmss = 33;

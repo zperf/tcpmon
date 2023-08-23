@@ -135,8 +135,8 @@ timer:(keepalive,11sec,0) skmem:(r0,rb131072,t0,tb2626560,f0,w0,o0,bl0,d276) ts 
 	assert.Equal(6.562, t.Sockets[3].Rtt)
 	assert.Equal(12.05, t.Sockets[3].Rttvar)
 
-	assert.Equal(uint32(40), t.Sockets[2].Ato)
-	assert.Equal(uint32(40), t.Sockets[3].Ato)
+	assert.Equal(float64(40), t.Sockets[2].Ato)
+	assert.Equal(float64(40), t.Sockets[3].Ato)
 
 	assert.Equal(uint32(32768), t.Sockets[2].Mss)
 	assert.Equal(uint32(32768), t.Sockets[3].Mss)
