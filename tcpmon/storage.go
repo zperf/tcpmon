@@ -26,7 +26,6 @@ type DataStoreConfig struct {
 	MaxSize         int
 	ReclaimBatch    int
 	ReclaimInterval time.Duration
-	GcInterval      time.Duration
 }
 
 func (c *DataStoreConfig) WithDefault() {
@@ -39,9 +38,6 @@ func (c *DataStoreConfig) WithDefault() {
 	if c.ReclaimInterval == 0 {
 		c.ReclaimInterval = time.Minute
 	}
-	if c.GcInterval == 0 {
-		c.GcInterval = 5 * time.Minute
-	}
 }
 
 func NewDataStore(initialEpoch uint64, config *DataStoreConfig) *DataStore {
@@ -49,13 +45,9 @@ func NewDataStore(initialEpoch uint64, config *DataStoreConfig) *DataStore {
 
 	options := badger.DefaultOptions(config.Path).
 		WithLogger(NewBadgerLogger()).
-		WithInMemory(false).
 		WithCompression(boptions.ZSTD).
-		WithNumGoroutines(2).
-		WithNumMemtables(1).
-		WithMemTableSize(8 << 20).
-		WithBlockSize(4 << 20).
-		WithCompactL0OnClose(true)
+		WithZSTDCompressionLevel(2).
+		WithNumMemtables(1)
 
 	db, err := badger.Open(options)
 	if err != nil {
@@ -70,13 +62,11 @@ func NewDataStore(initialEpoch uint64, config *DataStoreConfig) *DataStore {
 		tx:            tx,
 		db:            db,
 		tickerReclaim: time.NewTicker(config.ReclaimInterval),
-		tickerGC:      time.NewTicker(config.GcInterval),
 	}
 	d.wait.Add(3)
 
 	go d.writer(initialEpoch)
 	go d.autoReclaim(config.MaxSize, config.ReclaimBatch)
-	go d.autoGC()
 	return d
 }
 
@@ -208,21 +198,6 @@ func (d *DataStore) autoReclaim(maxSize, deleteSize int) {
 			d.checkDeletePrefix([]byte(PrefixNetMetric), maxSize, deleteSize)
 			d.checkDeletePrefix([]byte(PrefixNicMetric), maxSize, deleteSize)
 			d.checkDeletePrefix([]byte(PrefixTcpMetric), maxSize, deleteSize)
-		}
-	}
-}
-
-func (d *DataStore) autoGC() {
-	defer func(wait *sync.WaitGroup) {
-		wait.Done()
-	}(&d.wait)
-
-	for {
-		select {
-		case <-d.done:
-			return
-		case <-d.tickerGC.C:
-			_ = d.db.RunValueLogGC(0.5)
 		}
 	}
 }

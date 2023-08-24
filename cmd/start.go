@@ -26,7 +26,6 @@ var startCmd = &cobra.Command{
 			DataStoreConfig: tcpmon.DataStoreConfig{
 				Path:            viper.GetString("db"),
 				MaxSize:         viper.GetInt("db-max-size"),
-				GcInterval:      viper.GetDuration("db-gc-interval"),
 				ReclaimBatch:    viper.GetInt("reclaim-batch"),
 				ReclaimInterval: viper.GetDuration("reclaim-interval"),
 			},
@@ -81,7 +80,6 @@ func init() {
 	// db flags
 	startCmd.PersistentFlags().String("db", "/tmp/tcpmon/db", "Database path")
 	startCmd.PersistentFlags().Int("db-max-size", 30000, "Maximum number of records in the database")
-	startCmd.PersistentFlags().Duration("db-gc-interval", 10*time.Minute, "BadgerDB value GC interval")
 	startCmd.PersistentFlags().Int("reclaim-batch", 2000, "Maximum number of reclaiming per batch")
 	startCmd.PersistentFlags().Duration("reclaim-interval", 3*time.Minute, "Reclaiming interval")
 
