@@ -257,31 +257,3 @@ func (d *DataStore) closeDatabase() {
 	}
 	debug.FreeOSMemory()
 }
-
-func txnSetUint32(txn *badger.Txn, key string, value uint32) error {
-	return txn.Set([]byte(key), []byte(strconv.FormatUint(uint64(value), 10)))
-}
-
-func txnDeleteOldestByPrefix(txn *badger.Txn, prefix []byte, deleteCount uint32) error {
-	options := badger.DefaultIteratorOptions
-	options.Prefix = prefix
-	options.PrefetchValues = false
-	itr := txn.NewIterator(options)
-	defer itr.Close()
-
-	count := uint32(0)
-	for itr.Seek(prefix); itr.ValidForPrefix(prefix); itr.Next() {
-		if count >= deleteCount {
-			break
-		}
-
-		el := itr.Item()
-		err := txn.Delete(el.Key())
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		count++
-	}
-
-	return nil
-}
