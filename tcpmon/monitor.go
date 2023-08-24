@@ -86,7 +86,7 @@ func (m *Monitor) Collect(now time.Time, tx chan<- *KVPair) {
 
 func (m *Monitor) Run(ctx context.Context) error {
 	ticker := time.NewTicker(m.config.CollectInterval)
-	tx := m.datastore.Tx()
+	//tx := m.datastore.Tx()
 
 	m.startHttpServer(m.config.HttpListen)
 
@@ -100,7 +100,8 @@ func (m *Monitor) Run(ctx context.Context) error {
 	for {
 		select {
 		case now := <-ticker.C:
-			m.Collect(now, tx)
+			_ = now
+			//m.Collect(now, tx)
 		case <-ctx.Done():
 			log.Info().Err(ctx.Err()).Msg("shutting down...")
 			m.Close()
