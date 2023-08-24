@@ -40,6 +40,7 @@ func (c *DataStoreConfig) MaxSizePerType() uint32 {
 func NewDataStore(initialEpoch uint64, config *DataStoreConfig) *DataStore {
 	if config == nil {
 		log.Fatal().Msgf("Config is nil")
+		return nil // make linter happy
 	}
 
 	log.Info().Uint64("initialEpoch", initialEpoch).Msg("Created")
@@ -102,18 +103,22 @@ func (d *DataStore) writer(initialEpoch uint64, writeInterval time.Duration) {
 	epoch := initialEpoch
 	ticker := time.NewTicker(writeInterval)
 
-	for {
-		select {
-		case <-d.done:
-			return
-		case now := <-ticker.C:
-			d.openDatabase()
-			log.Trace().Time("now", now).Msg("Write trigger")
-			err := d.doWrite(&epoch, maxCountPerType)
-			if err != nil {
-				log.Warn().Err(errors.WithStack(err)).Msg("Write failed")
-			}
-			d.closeDatabase()
+	d.openDatabase()
+
+	for now := range ticker.C {
+		log.Trace().Time("now", now).Msg("Write trigger")
+		err := d.doWrite(&epoch, maxCountPerType)
+		if err != nil {
+			log.Warn().Err(errors.Wrap(err, "write failed")).Send()
+		}
+
+		// check memory usage and reopen db if needed
+		var memstats runtime.MemStats
+		runtime.ReadMemStats(&memstats)
+
+		coolDownReady := d.lastOpen.Add(d.config.MinOpenInterval).Before(time.Now())
+		if coolDownReady && memstats.Sys > d.config.ExpectedRss {
+			d.reopenDatabase()
 		}
 	}
 }
@@ -180,9 +185,15 @@ reap:
 	deleteTotalCount := deleteNicCount + deleteTcpCount + deleteNetCount
 
 	// submit txn
+	signals := make([]int, 0)
 	err = d.db.Update(func(txn *badger.Txn) error {
 		// inserts
-		for _, req := range toWrite {
+		for i, req := range toWrite {
+			if req.IsSignal() {
+				signals = append(signals, i)
+				continue
+			}
+
 			key := fmt.Sprintf("%s%v", req.Key, epoch)
 			*epoch++
 
@@ -229,6 +240,14 @@ reap:
 	if err != nil {
 		return errors.WithStack(err)
 	}
+
+	for _, i := range signals {
+		req := toWrite[i]
+		if req.Callback != nil {
+			req.Callback()
+		}
+	}
+
 	return nil
 }
 
