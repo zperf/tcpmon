@@ -106,6 +106,6 @@ func NewMemberlistLogger() *MemberlistLogger {
 }
 
 func (m *MemberlistLogger) Write(p []byte) (int, error) {
-	//m.log.Info().Msg(strings.TrimSpace(string(p)))
+	m.log.Info().Msg(strings.TrimSpace(string(p)))
 	return len(p), nil
 }
