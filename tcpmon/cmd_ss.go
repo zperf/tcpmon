@@ -9,7 +9,6 @@ import (
 	"github.com/go-cmd/cmd"
 	"github.com/rs/zerolog/log"
 	"github.com/umisama/go-regexpcache"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var socketStateMap map[string]SocketState
@@ -256,6 +255,7 @@ func ParseSSOutput(t *TcpMetric, out []string) {
 		} else {
 			_, exist = socketStateMap[fields[0]]
 		}
+
 		if exist {
 			s = &SocketMetric{}
 			s.State = ToPbState(fields[0])
@@ -340,8 +340,9 @@ func (m *SocketMonitor) RunSS(now time.Time) (*TcpMetric, string, error) {
 		return nil, "", errors.Wrap(ctx.Err(), "ss timeout")
 	case st := <-c.Start():
 		var t TcpMetric
-		t.Timestamp = timestamppb.New(now)
+		t.Timestamp = now.Unix()
 		t.Type = MetricType_TCP
+		out := ss_outp
 		ParseSSOutput(&t, st.Stdout)
 		return &t, strings.Join(st.Stdout, "\n"), nil
 	}

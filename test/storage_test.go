@@ -25,7 +25,7 @@ func TestStorage(t *testing.T) {
 			Path:            "/tmp/tcpmon-test",
 			MaxSize:         10000,
 			WriteInterval:   time.Second,
-			ExpectedRss:     200 << 20,
+			ExpectedRatio:   200 << 20,
 			MinOpenInterval: 10 * time.Second,
 		},
 	}

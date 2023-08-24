@@ -5,8 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	"github.com/cockroachdb/errors"
 	"github.com/go-cmd/cmd"
 )
@@ -100,7 +98,7 @@ func (m *NetstatMonitor) RunNetstat(now time.Time) (*NetstatMetric, string, erro
 	case st := <-c.Start():
 		var r NetstatMetric
 		r.Type = MetricType_NET
-		r.Timestamp = timestamppb.New(now)
+		r.Timestamp = now.Unix()
 
 		ParseNetstatOutput(&r, st.Stdout)
 		return &r, strings.Join(st.Stdout, "\n"), nil

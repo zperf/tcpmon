@@ -1,7 +1,5 @@
 syntax = "proto3";
 
-import "google/protobuf/timestamp.proto";
-
 enum MetricType {
   TCP = 0;
   NIC = 1;
@@ -110,7 +108,7 @@ message SocketMetric {
 
 message TcpMetric {
   // header
-  google.protobuf.Timestamp timestamp = 1;
+  int64 timestamp = 1;
   MetricType type = 2;
   // fields
   repeated SocketMetric sockets = 3;
@@ -131,7 +129,7 @@ message IfaceMetric {
 
 message NicMetric {
   // header
-  google.protobuf.Timestamp timestamp = 1;
+  int64 timestamp = 1;
   MetricType type = 2;
   // fields
   repeated IfaceMetric ifaces = 3;
@@ -139,7 +137,7 @@ message NicMetric {
 
 message NetstatMetric {
   // header
-  google.protobuf.Timestamp timestamp = 1;
+  int64 timestamp = 1;
   MetricType type = 2;
   // fields
   uint64 ip_total_packets_received = 3;

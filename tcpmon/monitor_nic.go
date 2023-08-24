@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
-	"google.golang.org/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 )
 
 type NicMonitor struct{ config *CmdConfig }

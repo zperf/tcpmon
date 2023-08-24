@@ -7,8 +7,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 )
 
 const MetricTypeCount = 3
@@ -118,21 +117,21 @@ func (p KVPair) ToJSON() map[string]any {
 		return nil
 	}
 
-	m, err := p.ToProto()
-	if err != nil {
-		return ErrorJSON(errors.WithStack(err))
-	}
-
-	buf, err := protojson.Marshal(m)
-	if err != nil {
-		return ErrorJSON(errors.WithStack(err))
-	}
-
+	//m, err := p.ToProto()
+	//if err != nil {
+	//	return ErrorJSON(errors.WithStack(err))
+	//}
+	//
+	//buf, err := protojson.Marshal(m)
+	//if err != nil {
+	//	return ErrorJSON(errors.WithStack(err))
+	//}
+	//
 	var h map[string]any
-	err = json.Unmarshal(buf, &h)
-	if err != nil {
-		return ErrorJSON(errors.WithStack(err))
-	}
+	//err = json.Unmarshal(buf, &h)
+	//if err != nil {
+	//	return ErrorJSON(errors.WithStack(err))
+	//}
 
 	return h
 }

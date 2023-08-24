@@ -17,7 +17,7 @@ release: proto
 
 .PHONY: proto
 proto:
-	docker run -t --rm --user ${shell id -u}:${shell id -g} -v ${ROOT_DIR}:${ROOT_DIR} -w ${ROOT_DIR} tcpmon:builder protoc --go_out=. --go_opt=Mproto/tcpmon.proto=./tcpmon proto/tcpmon.proto
+	protoc -Iproto --gogofaster_out=tcpmon/ tcpmon.proto
 
 .PHONY: check
 check: build
