@@ -156,7 +156,7 @@ func (d *DataStore) GetKeyCount(kind string) (uint32, error) {
 		return nil
 	})
 	if err != nil {
-		return 0, errors.WithStack(err)
+		return 0, err
 	}
 
 	return val, nil

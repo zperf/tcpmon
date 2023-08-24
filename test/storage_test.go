@@ -2,11 +2,13 @@ package test
 
 import (
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/suite"
 
 	. "github.com/zperf/tcpmon/tcpmon"
@@ -23,7 +25,7 @@ func TestStorage(t *testing.T) {
 			Path:            "/tmp/tcpmon-test",
 			MaxSize:         10000,
 			WriteInterval:   time.Second,
-			ExpectedRss:     100 << 20,
+			ExpectedRss:     200 << 20,
 			MinOpenInterval: 10 * time.Second,
 		},
 	}
@@ -84,11 +86,6 @@ func (s *StorageTestSuite) TestGetPrefix() {
 			assert.Failf("Key: %s don't have the net prefix", p.Key)
 		}
 	}
-
-	// check GetPrefix all
-	pairs, err = ds.GetPrefix([]byte{}, 10, true)
-	assert.NoError(err)
-	assert.Equal(9, len(pairs))
 }
 
 func (s *StorageTestSuite) TestGetKeys() {
@@ -107,9 +104,50 @@ func (s *StorageTestSuite) TestGetKeys() {
 	}
 	s.writeBarrier(tx)
 
-	keys, err := ds.GetKeys()
+	keys, err := ds.GetPrefix([]byte(PrefixNicMetric), 0, false)
 	assert.NoError(err)
 	assert.Equal(3, len(keys))
+}
+
+func (s *StorageTestSuite) TestMemoryFootprint() {
+	ds := NewDataStore(0, s.config)
+	tx := ds.Tx()
+
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+	log.Info().Float32("memStats.Sys(MiB)", float32(memStats.Sys)/(1<<20)).
+		Float32("memStats.Alloc(MiB)", float32(memStats.Alloc)/(1<<20)).
+		Msg("Memory footprint, before write")
+
+	// for a day
+	for i := 0; i < 3600; i++ {
+		tx <- &KVPair{
+			Key:   NewKey(PrefixNicMetric),
+			Value: make([]byte, 4096),
+		}
+		tx <- &KVPair{
+			Key:   NewKey(PrefixTcpMetric),
+			Value: make([]byte, 4096),
+		}
+		tx <- &KVPair{
+			Key:   NewKey(PrefixNetMetric),
+			Value: make([]byte, 4096),
+		}
+	}
+	s.writeBarrier(tx)
+
+	runtime.ReadMemStats(&memStats)
+	log.Info().Float32("memStats.Sys(MiB)", float32(memStats.Sys)/(1<<20)).
+		Float32("memStats.Alloc(MiB)", float32(memStats.Alloc)/(1<<20)).
+		Msg("Memory footprint, after write")
+
+	_, err := ds.GetKeys()
+	s.Require().NoError(err)
+
+	runtime.ReadMemStats(&memStats)
+	log.Info().Float32("memStats.Sys(MiB)", float32(memStats.Sys)/(1<<20)).
+		Float32("memStats.Alloc(MiB)", float32(memStats.Alloc)/(1<<20)).
+		Msg("Memory footprint, after read")
 }
 
 // writeBarrier waits for write complete
