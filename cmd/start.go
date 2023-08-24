@@ -27,7 +27,7 @@ var startCmd = &cobra.Command{
 				Path:            viper.GetString("db"),
 				MaxSize:         viper.GetUint32("db-max-size"),
 				WriteInterval:   viper.GetDuration("db-write-interval"),
-				ExpectedRss:     viper.GetUint64("db-expected-rss"),
+				ExpectedRatio:   float32(viper.GetFloat64("db-mem-ratio")),
 				MinOpenInterval: viper.GetDuration("db-min-open-interval"),
 			},
 		})
@@ -82,7 +82,7 @@ func init() {
 	startCmd.PersistentFlags().String("db", "/tmp/tcpmon/db", "Database path")
 	startCmd.PersistentFlags().Uint32("db-max-size", 2000000, "Maximum number of records in the database")
 	startCmd.PersistentFlags().Duration("db-write-interval", 3*time.Second, "Write interval")
-	startCmd.PersistentFlags().Uint64("db-expected-rss", 200<<20, "Expected maximum RSS")
+	startCmd.PersistentFlags().Float32("db-mem-ratio", 0.4, "Reopen database while (sys-alloc)/sys is larger than this ratio")
 	startCmd.PersistentFlags().Duration("db-min-open-interval", 1*time.Minute, "Database reopen interval")
 
 	fatalIf(viper.BindPFlags(startCmd.PersistentFlags()))

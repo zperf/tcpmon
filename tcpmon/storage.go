@@ -21,15 +21,16 @@ type DataStore struct {
 	config DataStoreConfig
 	lastOpen time.Time
 
-	done     chan struct{}
-	waitExit sync.WaitGroup // wait for all goroutines exit
+	done       chan struct{}
+	waitExit   sync.WaitGroup // wait for all goroutines exit
+	waitDbInit sync.WaitGroup
 }
 
 type DataStoreConfig struct {
 	Path            string
 	MaxSize         uint32
 	WriteInterval   time.Duration
-	ExpectedRss     uint64
+	ExpectedRatio   float32
 	MinOpenInterval time.Duration
 }
 
@@ -51,8 +52,11 @@ func NewDataStore(initialEpoch uint64, config *DataStoreConfig) *DataStore {
 		tx:     tx,
 	}
 	d.waitExit.Add(1)
+	d.waitDbInit.Add(1)
 
 	go d.writer(initialEpoch, config.WriteInterval)
+
+	d.waitDbInit.Wait()
 	return d
 }
 
@@ -106,6 +110,7 @@ func (d *DataStore) writer(initialEpoch uint64, writeInterval time.Duration) {
 	ticker := time.NewTicker(writeInterval)
 
 	d.openDatabase()
+	d.waitDbInit.Done()
 
 	err := d.db.Update(func(txn *badger.Txn) error {
 		err := txnEnsureExistsUint32(txn, KeyTotalCount)
@@ -151,9 +156,11 @@ func (d *DataStore) writer(initialEpoch uint64, writeInterval time.Duration) {
 				var memStats runtime.MemStats
 				runtime.ReadMemStats(&memStats)
 
-				if memStats.Sys > d.config.ExpectedRss {
+				ratio := 1 - float32(memStats.Alloc)/float32(memStats.Sys)
+				if ratio-d.config.ExpectedRatio >= float32(1e-9) {
 					log.Info().Float32("memStats.Sys(MiB)", float32(memStats.Sys)/(1<<20)).
 						Float32("memStats.Alloc(MiB)", float32(memStats.Alloc)/(1<<20)).
+						Float32("ratio", ratio).
 						Msg("reopen database")
 					d.reopenDatabase()
 				}
@@ -298,7 +305,7 @@ func (d *DataStore) openDatabase() {
 	options := badger.DefaultOptions(d.config.Path).
 		WithLogger(NewBadgerLogger()).
 		WithCompression(boptions.ZSTD).
-		WithZSTDCompressionLevel(2).
+		WithZSTDCompressionLevel(1).
 		WithNumMemtables(1)
 
 	db, err := badger.Open(options)

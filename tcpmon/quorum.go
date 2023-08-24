@@ -5,9 +5,9 @@ import (
 	"net"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/hashicorp/memberlist"
 	"github.com/rs/zerolog/log"
-	"google.golang.org/protobuf/proto"
 )
 
 type Quorum struct {

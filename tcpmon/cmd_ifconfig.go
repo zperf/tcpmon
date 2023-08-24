@@ -7,7 +7,6 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/go-cmd/cmd"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func ParseIfconfigOutput(nics *NicMetric, out []string) {
@@ -48,7 +47,7 @@ func (m *NicMonitor) RunIfconfig(now time.Time) (*NicMetric, string, error) {
 	case st := <-c.Start():
 		var nics NicMetric
 		nics.Type = MetricType_NIC
-		nics.Timestamp = timestamppb.New(now)
+		nics.Timestamp = now.Unix()
 
 		ParseIfconfigOutput(&nics, st.Stdout)
 		return &nics, strings.Join(st.Stdout, ""), nil

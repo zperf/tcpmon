@@ -94,7 +94,7 @@ func (d *DataStore) GetMetrics() ([]string, error) {
 
 	metrics := make([]string, 0)
 	for _, k := range keys {
-		if !strings.HasPrefix(k, PrefixMember) {
+		if !strings.HasPrefix(k, PrefixMember) && !strings.HasPrefix(k, PrefixMetadata) {
 			metrics = append(metrics, k)
 		}
 	}
