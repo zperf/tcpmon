@@ -25,9 +25,10 @@ var startCmd = &cobra.Command{
 			QuorumPort:      viper.GetInt("quorum-port"),
 			DataStoreConfig: tcpmon.DataStoreConfig{
 				Path:            viper.GetString("db"),
-				MaxSize:         viper.GetInt("db-max-size"),
-				ReclaimBatch:    viper.GetInt("reclaim-batch"),
-				ReclaimInterval: viper.GetDuration("reclaim-interval"),
+				MaxSize:         viper.GetUint32("db-max-size"),
+				WriteInterval:   viper.GetDuration("db-write-interval"),
+				ExpectedRss:     viper.GetUint64("db-expected-rss"),
+				MinOpenInterval: viper.GetDuration("db-min-open-interval"),
 			},
 		})
 		if err != nil {
@@ -79,9 +80,10 @@ func init() {
 
 	// db flags
 	startCmd.PersistentFlags().String("db", "/tmp/tcpmon/db", "Database path")
-	startCmd.PersistentFlags().Int("db-max-size", 30000, "Maximum number of records in the database")
-	startCmd.PersistentFlags().Int("reclaim-batch", 2000, "Maximum number of reclaiming per batch")
-	startCmd.PersistentFlags().Duration("reclaim-interval", 3*time.Minute, "Reclaiming interval")
+	startCmd.PersistentFlags().Uint32("db-max-size", 2000000, "Maximum number of records in the database")
+	startCmd.PersistentFlags().Duration("db-write-interval", 3*time.Second, "Write interval")
+	startCmd.PersistentFlags().Uint64("db-expected-rss", 200<<20, "Expected maximum RSS")
+	startCmd.PersistentFlags().Duration("db-min-open-interval", 1*time.Minute, "Database reopen interval")
 
 	fatalIf(viper.BindPFlags(startCmd.PersistentFlags()))
 	rootCmd.AddCommand(startCmd)

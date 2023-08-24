@@ -2,6 +2,9 @@ package tcpmon
 
 import (
 	"fmt"
+	"runtime"
+	"runtime/debug"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -13,60 +16,42 @@ import (
 )
 
 type DataStore struct {
-	tx            chan *KVPair
-	done          chan struct{}
-	db            *badger.DB
-	wait          sync.WaitGroup
-	tickerReclaim *time.Ticker
-	tickerGC      *time.Ticker
+	db       *badger.DB
+	tx       chan *KVPair
+	config   DataStoreConfig
+	lastOpen time.Time
+
+	done     chan struct{}
+	waitExit sync.WaitGroup // wait for all goroutines exit
 }
 
 type DataStoreConfig struct {
 	Path            string
-	MaxSize         int
-	ReclaimBatch    int
-	ReclaimInterval time.Duration
+	MaxSize         uint32
+	WriteInterval   time.Duration
+	ExpectedRss     uint64
+	MinOpenInterval time.Duration
 }
 
-func (c *DataStoreConfig) WithDefault() {
-	if c.MaxSize == 0 {
-		c.MaxSize = 30000
-	}
-	if c.ReclaimBatch == 0 {
-		c.ReclaimBatch = 2000
-	}
-	if c.ReclaimInterval == 0 {
-		c.ReclaimInterval = time.Minute
-	}
+func (c *DataStoreConfig) MaxSizePerType() uint32 {
+	return c.MaxSize / MetricTypeCount
 }
 
 func NewDataStore(initialEpoch uint64, config *DataStoreConfig) *DataStore {
-	config.WithDefault()
-
-	options := badger.DefaultOptions(config.Path).
-		WithLogger(NewBadgerLogger()).
-		WithCompression(boptions.ZSTD).
-		WithZSTDCompressionLevel(2).
-		WithNumMemtables(1)
-
-	db, err := badger.Open(options)
-	if err != nil {
-		log.Fatal().Err(errors.WithStack(err)).Msg("failed open database")
+	if config == nil {
+		log.Fatal().Msgf("Config is nil")
 	}
 
 	log.Info().Uint64("initialEpoch", initialEpoch).Msg("Created")
 	tx := make(chan *KVPair, 256)
-
 	d := &DataStore{
-		done:          make(chan struct{}),
-		tx:            tx,
-		db:            db,
-		tickerReclaim: time.NewTicker(config.ReclaimInterval),
+		done:   make(chan struct{}),
+		config: *config,
+		tx:     tx,
 	}
-	d.wait.Add(3)
+	d.waitExit.Add(1)
 
-	go d.writer(initialEpoch)
-	go d.autoReclaim(config.MaxSize, config.ReclaimBatch)
+	go d.writer(initialEpoch, config.WriteInterval)
 	return d
 }
 
@@ -78,10 +63,10 @@ func (d *DataStore) Tx() chan<- *KVPair {
 // Close the datastore and shutdown
 func (d *DataStore) Close() {
 	close(d.done)
-	d.wait.Wait()
+	d.waitExit.Wait()
 }
 
-func (d *DataStore) writer(initialEpoch uint64) {
+func (d *DataStore) writer(initialEpoch uint64, writeInterval time.Duration) {
 	log.Info().Msg("Writer started")
 	defer func(wait *sync.WaitGroup, db *badger.DB) {
 		err := db.Close()
@@ -90,114 +75,205 @@ func (d *DataStore) writer(initialEpoch uint64) {
 		}
 		wait.Done()
 		log.Info().Msg("datastore writer exited")
-	}(&d.wait, d.db)
+	}(&d.waitExit, d.db)
 
+	maxCountPerType := d.config.MaxSizePerType()
 	epoch := initialEpoch
+	ticker := time.NewTicker(writeInterval)
+
+	d.openDatabase()
+
 	for {
-		var req *KVPair
 		select {
-		case req = <-d.tx:
-		case <-d.done:
-			return
-		}
-
-		if len(req.Key) <= 0 {
-			log.Warn().Str("Key", req.Key).Int("ValueLen", len(req.Value)).
-				Msg("ignore invalid KVPair")
-			continue
-		}
-
-		key := fmt.Sprintf("%s%v", req.Key, epoch)
-		req.Key = key
-		epoch++
-
-		var err error
-		if !strings.HasPrefix(key, PrefixSignal) {
-			// TODO(fanyang) batch write txn
-			err = d.db.Update(func(txn *badger.Txn) error {
-				return txn.Set([]byte(req.Key), req.Value)
-			})
+		case now := <-ticker.C:
+			log.Trace().Time("now", now).Msg("Write trigger")
+			err := d.doWrite(&epoch, maxCountPerType)
 			if err != nil {
-				log.Warn().Err(err).Msg("failed to insert db")
+				log.Warn().Err(errors.WithStack(err)).Msg("Write failed")
 			}
-		}
-		if req.Callback != nil {
-			req.Callback(err)
+
+			// check memory usage and reopen db if needed
+			var memstats runtime.MemStats
+			runtime.ReadMemStats(&memstats)
+
+			coolDownReady := d.lastOpen.Add(d.config.MinOpenInterval).Before(time.Now())
+			if coolDownReady && memstats.Sys > d.config.ExpectedRss {
+				d.reopenDatabase()
+			}
 		}
 	}
 }
 
-func (d *DataStore) GetSize(prefix []byte) int {
-	size := 0
-	err := d.db.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.Prefix = prefix
-		opts.PrefetchValues = false
-		it := txn.NewIterator(opts)
-		defer it.Close()
-
-		for it.Rewind(); it.Valid(); it.Next() {
-			size++
+func (d *DataStore) doWrite(epoch *uint64, maxCountPerType uint32) error {
+	// reap requests from queue
+	toWrite := make([]*KVPair, 0)
+reap:
+	for {
+		select {
+		case p := <-d.tx:
+			toWrite = append(toWrite, p)
+		default:
+			break reap
 		}
+	}
+
+	// stat the queue
+	tcpCount, nicCount, netCount, totalCount := uint32(0), uint32(0), uint32(0), uint32(0)
+	for _, p := range toWrite {
+		if strings.HasPrefix(p.Key, PrefixTcpMetric) {
+			tcpCount++
+		} else if strings.HasPrefix(p.Key, PrefixNetMetric) {
+			netCount++
+		} else if strings.HasPrefix(p.Key, PrefixNicMetric) {
+			nicCount++
+		}
+		totalCount++
+	}
+
+	p, err := d.GetNetKeyCount()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	netCount += p
+
+	p, err = d.GetTcpKeyCount()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	tcpCount += p
+
+	p, err = d.GetNicKeyCount()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	nicCount += p
+
+	deleteNicCount := uint32(0)
+	if nicCount > maxCountPerType {
+		deleteNicCount = nicCount - maxCountPerType
+	}
+
+	deleteTcpCount := uint32(0)
+	if tcpCount > maxCountPerType {
+		deleteTcpCount = tcpCount - maxCountPerType
+	}
+
+	deleteNetCount := uint32(0)
+	if netCount > maxCountPerType {
+		deleteNetCount = netCount - maxCountPerType
+	}
+
+	deleteTotalCount := deleteNicCount + deleteTcpCount + deleteNetCount
+
+	// submit txn
+	err = d.db.Update(func(txn *badger.Txn) error {
+		// inserts
+		for _, req := range toWrite {
+			key := fmt.Sprintf("%s%v", req.Key, epoch)
+			*epoch++
+
+			err := txn.Set([]byte(key), req.Value)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+		}
+
+		// reclaim
+		err = txnDeleteOldestByPrefix(txn, []byte(PrefixTcpMetric), deleteTcpCount)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		err = txnDeleteOldestByPrefix(txn, []byte(PrefixNicMetric), deleteTcpCount)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		err = txnDeleteOldestByPrefix(txn, []byte(PrefixNetMetric), deleteTcpCount)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		// update count
+		err = txnSetUint32(txn, KeyTcpCount, tcpCount-deleteTcpCount)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		err = txnSetUint32(txn, KeyNicCount, nicCount-deleteNicCount)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		err = txnSetUint32(txn, KeyNetCount, netCount-deleteNetCount)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		err = txnSetUint32(txn, KeyTotalCount, totalCount-deleteTotalCount)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
 		return nil
 	})
 	if err != nil {
-		log.Fatal().Err(errors.WithStack(err)).Msg("get size failed")
+		return errors.WithStack(err)
 	}
-
-	return size
+	return nil
 }
 
-func (d *DataStore) checkDeletePrefix(prefix []byte, maxSize int, deleteSize int) {
-	size := d.GetSize(prefix)
-	if size <= maxSize {
-		return
+func (d *DataStore) openDatabase() {
+	if d.db != nil {
+		log.Fatal().Msg("db should be nil before open it")
 	}
 
-	err := d.db.Update(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.Prefix = prefix
-		opts.PrefetchValues = false
+	options := badger.DefaultOptions(d.config.Path).
+		WithLogger(NewBadgerLogger()).
+		WithCompression(boptions.ZSTD).
+		WithZSTDCompressionLevel(2).
+		WithNumMemtables(1)
 
-		it := txn.NewIterator(opts)
-		defer it.Close()
-
-		deleted := 0
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			if deleted >= deleteSize || deleted >= size-maxSize {
-				break
-			}
-
-			item := it.Item()
-			key := item.KeyCopy(nil)
-			err := txn.Delete(key)
-			if err != nil {
-				log.Warn().Err(err).Str("key", string(key)).Msg("failed to delete item")
-			}
-			deleted++
-		}
-
-		return nil
-	})
+	db, err := badger.Open(options)
 	if err != nil {
-		log.Warn().Err(err).Msg("failed to delete")
+		log.Fatal().Err(errors.WithStack(err)).Msg("failed open database")
 	}
+	d.db = db
+	d.lastOpen = time.Now()
 }
 
-func (d *DataStore) autoReclaim(maxSize, deleteSize int) {
-	defer func(wait *sync.WaitGroup) {
-		wait.Done()
-	}(&d.wait)
-
-	maxSize, deleteSize = maxSize/MetricTypeCount, deleteSize/MetricTypeCount
-	for {
-		select {
-		case <-d.done:
-			return
-		case <-d.tickerReclaim.C:
-			d.checkDeletePrefix([]byte(PrefixNetMetric), maxSize, deleteSize)
-			d.checkDeletePrefix([]byte(PrefixNicMetric), maxSize, deleteSize)
-			d.checkDeletePrefix([]byte(PrefixTcpMetric), maxSize, deleteSize)
+func (d *DataStore) reopenDatabase() {
+	if d.db != nil {
+		err := d.db.Close()
+		if err != nil {
+			log.Warn().Err(err).Msg("Close db failed")
 		}
+		d.db = nil
 	}
+
+	debug.FreeOSMemory()
+	d.openDatabase()
+}
+
+func txnSetUint32(txn *badger.Txn, key string, value uint32) error {
+	return txn.Set([]byte(key), []byte(strconv.FormatUint(uint64(value), 10)))
+}
+
+func txnDeleteOldestByPrefix(txn *badger.Txn, prefix []byte, deleteCount uint32) error {
+	options := badger.DefaultIteratorOptions
+	options.Prefix = prefix
+	options.PrefetchValues = false
+	itr := txn.NewIterator(options)
+	defer itr.Close()
+
+	count := uint32(0)
+	for itr.Seek(prefix); itr.ValidForPrefix(prefix); itr.Next() {
+		if count >= deleteCount {
+			break
+		}
+
+		el := itr.Item()
+		err := txn.Delete(el.Key())
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		count++
+	}
+
+	return nil
 }

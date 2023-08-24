@@ -1,8 +1,10 @@
 package tcpmon
 
 import (
+	"fmt"
 	"io"
 	"math"
+	"strconv"
 	"strings"
 
 	"github.com/cockroachdb/errors"
@@ -125,4 +127,53 @@ func (d *DataStore) Get(key string) (*KVPair, error) {
 		return nil, errors.WithStack(err)
 	}
 	return p, nil
+}
+
+func (d *DataStore) GetKeyCount(kind string) (uint32, error) {
+	if !ValidCountKind(kind) {
+		return 0, errors.Newf("invalid type: '%s'", kind)
+	}
+
+	val := uint32(0)
+	key := fmt.Sprintf("%s/count/%s", PrefixMetadata, kind)
+
+	err := d.db.View(func(txn *badger.Txn) error {
+		it, err := txn.Get([]byte(key))
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		buf, err := it.ValueCopy(nil)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		v, err := strconv.ParseUint(string(buf), 10, 32)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		val = uint32(v)
+		return nil
+	})
+	if err != nil {
+		return 0, errors.WithStack(err)
+	}
+
+	return val, nil
+}
+
+func (d *DataStore) GetTotalCount() (uint32, error) {
+	return d.GetKeyCount("total")
+}
+
+func (d *DataStore) GetTcpKeyCount() (uint32, error) {
+	return d.GetKeyCount("tcp")
+}
+
+func (d *DataStore) GetNicKeyCount() (uint32, error) {
+	return d.GetKeyCount("nic")
+}
+
+func (d *DataStore) GetNetKeyCount() (uint32, error) {
+	return d.GetKeyCount("net")
 }
