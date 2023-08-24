@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/suite"
 
 	. "github.com/zperf/tcpmon/tcpmon"
@@ -23,9 +22,9 @@ func TestStorage(t *testing.T) {
 		config: &DataStoreConfig{
 			Path:            "/tmp/tcpmon-test",
 			MaxSize:         10000,
-			ReclaimBatch:    100000,
-			ReclaimInterval: 2 * time.Second,
-			GcInterval:      5 * time.Minute,
+			WriteInterval:   time.Second,
+			ExpectedRss:     100 << 20,
+			MinOpenInterval: 10 * time.Second,
 		},
 	}
 	suite.Run(t, s)
@@ -113,39 +112,6 @@ func (s *StorageTestSuite) TestGetKeys() {
 	assert.Equal(3, len(keys))
 }
 
-func (s *StorageTestSuite) TestPeriodicReclaim() {
-	ds := NewDataStore(0, s.config)
-	defer ds.Close()
-
-	tx := ds.Tx()
-	for i := 0; i < s.config.MaxSize; i++ {
-		tx <- &KVPair{
-			Key:   NewKey(PrefixNicMetric),
-			Value: nil,
-		}
-		tx <- &KVPair{
-			Key:   NewKey(PrefixNetMetric),
-			Value: nil,
-		}
-		tx <- &KVPair{
-			Key:   NewKey(PrefixTcpMetric),
-			Value: nil,
-		}
-	}
-	s.writeBarrier(tx)
-
-	size := ds.GetSize(nil)
-	log.Trace().Int("size", size).Msg("insert")
-
-	// wait for reclaim trigger
-	time.Sleep(s.config.ReclaimInterval + time.Second)
-
-	size = ds.GetSize(nil)
-	log.Info().Int("size", size).Msg("reclaim done")
-
-	s.Assert().GreaterOrEqual(s.config.MaxSize, size)
-}
-
 // writeBarrier waits for write complete
 func (s *StorageTestSuite) writeBarrier(tx chan<- *KVPair) {
 	var wg sync.WaitGroup
@@ -153,8 +119,7 @@ func (s *StorageTestSuite) writeBarrier(tx chan<- *KVPair) {
 	tx <- &KVPair{
 		Key:   NewKey(PrefixSignal),
 		Value: nil,
-		Callback: func(err error) {
-			s.Assert().NoError(err)
+		Callback: func() {
 			wg.Done()
 		},
 	}

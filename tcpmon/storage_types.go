@@ -61,7 +61,7 @@ func NewKey(kind string) string {
 type KVPair struct {
 	Key      string
 	Value    []byte
-	Callback func(err error)
+	Callback func()
 }
 
 func NewKVPair(key string, value []byte) *KVPair {
@@ -69,6 +69,10 @@ func NewKVPair(key string, value []byte) *KVPair {
 		Key:   key,
 		Value: value,
 	}
+}
+
+func (p KVPair) IsSignal() bool {
+	return strings.HasPrefix(p.Key, PrefixSignal)
 }
 
 func (p KVPair) ToProto() (proto.Message, error) {
