@@ -25,6 +25,8 @@ const PrefixMember = "mbr"
 // PrefixMetadata is the metadata of the database
 const PrefixMetadata = "mdt"
 
+const MetadataTypeCount = 4
+
 var KeyTotalCount = PrefixMetadata + "/count/total"
 var KeyTcpCount = PrefixMetadata + "/count/" + PrefixTcpMetric
 var KeyNicCount = PrefixMetadata + "/count/" + PrefixNicMetric

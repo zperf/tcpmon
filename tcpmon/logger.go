@@ -69,7 +69,7 @@ func InitLogger(config *LogConfig) {
 	}
 
 	zerolog.ErrorStackMarshaler = func(err error) interface{} {
-		return fmt.Sprintf("%+v", err)
+		return fmt.Sprintf("\n%+v", err)
 	}
 	log.Logger = zerolog.New(io.MultiWriter(writers...)).
 		Level(config.Level).

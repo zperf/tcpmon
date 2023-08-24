@@ -68,15 +68,17 @@ func (d *DataStore) Close() {
 }
 
 func (d *DataStore) writer(initialEpoch uint64, writeInterval time.Duration) {
-	log.Info().Msg("Writer started")
-	defer func(wait *sync.WaitGroup, db *badger.DB) {
-		err := db.Close()
-		if err != nil {
-			log.Warn().Err(err).Msg("close db failed")
+	log.Info().Msg("DataStore writer started")
+	defer func(d *DataStore) {
+		if d.db != nil {
+			err := d.db.Close()
+			if err != nil {
+				log.Warn().Err(err).Msg("Close db failed")
+			}
 		}
-		wait.Done()
-		log.Info().Msg("datastore writer exited")
-	}(&d.waitExit, d.db)
+		log.Info().Msg("DataStore writer exited")
+		d.waitExit.Done()
+	}(d)
 
 	d.openDatabase()
 	err := d.db.Update(func(txn *badger.Txn) error {
@@ -105,20 +107,57 @@ func (d *DataStore) writer(initialEpoch uint64, writeInterval time.Duration) {
 
 	d.openDatabase()
 
-	for now := range ticker.C {
-		log.Trace().Time("now", now).Msg("Write trigger")
-		err := d.doWrite(&epoch, maxCountPerType)
+	err := d.db.Update(func(txn *badger.Txn) error {
+		err := txnEnsureExistsUint32(txn, KeyTotalCount)
 		if err != nil {
-			log.Warn().Err(errors.Wrap(err, "write failed")).Send()
+			return err
 		}
 
-		// check memory usage and reopen db if needed
-		var memstats runtime.MemStats
-		runtime.ReadMemStats(&memstats)
+		err = txnEnsureExistsUint32(txn, KeyTcpCount)
+		if err != nil {
+			return err
+		}
 
-		coolDownReady := d.lastOpen.Add(d.config.MinOpenInterval).Before(time.Now())
-		if coolDownReady && memstats.Sys > d.config.ExpectedRss {
-			d.reopenDatabase()
+		err = txnEnsureExistsUint32(txn, KeyNetCount)
+		if err != nil {
+			return err
+		}
+
+		err = txnEnsureExistsUint32(txn, KeyNicCount)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		log.Fatal().Err(err).Msg("ensure metadata exists failed")
+	}
+
+	for {
+		select {
+		case <-d.done:
+			return
+		case now := <-ticker.C:
+			log.Trace().Time("now", now).Msg("Write trigger")
+			err := d.doWrite(&epoch, maxCountPerType)
+			if err != nil {
+				log.Warn().Err(err).Msg("Write failed")
+			}
+
+			coolDownReady := d.lastOpen.Add(d.config.MinOpenInterval).Before(time.Now())
+			if coolDownReady {
+				// check memory usage and reopen db if needed
+				var memStats runtime.MemStats
+				runtime.ReadMemStats(&memStats)
+
+				if memStats.Sys > d.config.ExpectedRss {
+					log.Info().Float32("memStats.Sys(MiB)", float32(memStats.Sys)/(1<<20)).
+						Float32("memStats.Alloc(MiB)", float32(memStats.Alloc)/(1<<20)).
+						Msg("reopen database")
+					d.reopenDatabase()
+				}
+			}
 		}
 	}
 }
@@ -151,19 +190,19 @@ reap:
 
 	p, err := d.GetNetKeyCount()
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 	netCount += p
 
 	p, err = d.GetTcpKeyCount()
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 	tcpCount += p
 
 	p, err = d.GetNicKeyCount()
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 	nicCount += p
 
@@ -194,7 +233,7 @@ reap:
 				continue
 			}
 
-			key := fmt.Sprintf("%s%v", req.Key, epoch)
+			key := fmt.Sprintf("%s%v", req.Key, *epoch)
 			*epoch++
 
 			err := txn.Set([]byte(key), req.Value)
@@ -206,33 +245,33 @@ reap:
 		// reclaim
 		err = txnDeleteOldestByPrefix(txn, []byte(PrefixTcpMetric), deleteTcpCount)
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		err = txnDeleteOldestByPrefix(txn, []byte(PrefixNicMetric), deleteTcpCount)
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		err = txnDeleteOldestByPrefix(txn, []byte(PrefixNetMetric), deleteTcpCount)
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 
 		// update count
 		err = txnSetUint32(txn, KeyTcpCount, tcpCount-deleteTcpCount)
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		err = txnSetUint32(txn, KeyNicCount, nicCount-deleteNicCount)
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		err = txnSetUint32(txn, KeyNetCount, netCount-deleteNetCount)
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		err = txnSetUint32(txn, KeyTotalCount, totalCount-deleteTotalCount)
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 
 		return nil
@@ -284,7 +323,8 @@ func (d *DataStore) reopenDatabase() {
 }
 
 func txnSetUint32(txn *badger.Txn, key string, value uint32) error {
-	return txn.Set([]byte(key), []byte(strconv.FormatUint(uint64(value), 10)))
+	err := txn.Set([]byte(key), []byte(strconv.FormatUint(uint64(value), 10)))
+	return errors.Wrap(err, "txn set uint32 failed")
 }
 
 func txnDeleteOldestByPrefix(txn *badger.Txn, prefix []byte, deleteCount uint32) error {
@@ -308,5 +348,20 @@ func txnDeleteOldestByPrefix(txn *badger.Txn, prefix []byte, deleteCount uint32)
 		count++
 	}
 
+	return nil
+}
+
+func txnEnsureExistsUint32(txn *badger.Txn, key string) error {
+	_, err := txn.Get([]byte(key))
+	if err != nil {
+		if errors.Is(err, badger.ErrKeyNotFound) {
+			err = txnSetUint32(txn, key, 0)
+			if err != nil {
+				return err
+			}
+		} else {
+			return errors.Wrapf(err, "get %s failed", KeyTcpCount)
+		}
+	}
 	return nil
 }
