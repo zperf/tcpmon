@@ -20,12 +20,7 @@ func BenchmarkSplit(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		fields := make([]string, 0)
-		for _, x := range strings.Split(str, " ") {
-			field := strings.TrimSpace(x)
-			if len(field) > 0 {
-				fields = append(fields, field)
-			}
-		}
+		fields = append(fields, strings.Split(str, " ")...)
 		_ = fields
 	}
 }
@@ -39,9 +34,7 @@ func BenchmarkFieldsFunc(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		fields := make([]string, 0)
-		for _, field := range strings.FieldsFunc(str, splitSpace) {
-			fields = append(fields, field)
-		}
+		fields = append(fields, strings.FieldsFunc(str, splitSpace)...)
 		_ = fields
 	}
 }
@@ -55,9 +48,7 @@ func BenchmarkFieldsFunc2(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		fields := make([]string, 0)
-		for _, field := range strings.FieldsFunc(str, splitSpace2) {
-			fields = append(fields, field)
-		}
+		fields = append(fields, strings.FieldsFunc(str, splitSpace2)...)
 		_ = fields
 	}
 }
@@ -71,9 +62,7 @@ func BenchmarkFieldsFunc3(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		fields := make([]string, 0)
-		for _, field := range strings.FieldsFunc(str, splitSpace3) {
-			fields = append(fields, field)
-		}
+		fields = append(fields, strings.FieldsFunc(str, splitSpace3)...)
 		_ = fields
 	}
 }
