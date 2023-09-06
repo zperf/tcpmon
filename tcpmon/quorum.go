@@ -47,10 +47,10 @@ func NewQuorum(ds *DataStore, mconfig *MonitorConfig) *Quorum {
 		log.Fatal().Err(err).Msg("Marshal member info failed")
 	}
 	my.Meta = buf
-	err = ds.UpdateMember(my.Address(), buf)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Update my member info failed")
-	}
+	// err = ds.UpdateMember(my.Address(), buf)
+	// if err != nil {
+	// 	log.Fatal().Err(err).Msg("Update my member info failed")
+	// }
 
 	return q
 }
@@ -64,26 +64,26 @@ func (q *Quorum) Close() {
 
 func (q *Quorum) NotifyJoin(node *memberlist.Node) {
 	log.Info().Str("node", node.Address()).Msgf("Member joined")
-	err := q.ds.AddMember(node.Address(), node.Meta)
-	if err != nil {
-		log.Warn().Err(err).Str("node", node.Address()).Msg("Save member failed")
-	}
+	// err := q.ds.AddMember(node.Address(), node.Meta)
+	// if err != nil {
+	// 	log.Warn().Err(err).Str("node", node.Address()).Msg("Save member failed")
+	// }
 }
 
 func (q *Quorum) NotifyLeave(node *memberlist.Node) {
 	log.Info().Str("node", node.Address()).Msgf("Member left")
-	err := q.ds.DeleteMember(node.Address())
-	if err != nil {
-		log.Warn().Err(err).Str("node", node.Address()).Msg("Save member failed")
-	}
+	// err := q.ds.DeleteMember(node.Address())
+	// if err != nil {
+	// 	log.Warn().Err(err).Str("node", node.Address()).Msg("Save member failed")
+	// }
 }
 
 func (q *Quorum) NotifyUpdate(node *memberlist.Node) {
 	log.Info().Str("node", node.Address()).Msgf("Update member meta data")
-	err := q.ds.UpdateMember(node.Address(), node.Meta)
-	if err != nil {
-		log.Warn().Err(err).Str("node", node.Address()).Msg("Update member failed")
-	}
+	// err := q.ds.UpdateMember(node.Address(), node.Meta)
+	// if err != nil {
+	// 	log.Warn().Err(err).Str("node", node.Address()).Msg("Update member failed")
+	// }
 }
 
 func (q *Quorum) Local() *memberlist.Node {

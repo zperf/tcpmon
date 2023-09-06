@@ -2,7 +2,6 @@ package tcpmon
 
 import (
 	"fmt"
-	"runtime"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -16,10 +15,9 @@ import (
 )
 
 type DataStore struct {
-	db       *badger.DB
-	tx       chan *KVPair
-	config   DataStoreConfig
-	lastOpen time.Time
+	db     *badger.DB
+	tx     chan *KVPair
+	config DataStoreConfig
 
 	done     chan struct{}
 	waitExit sync.WaitGroup // wait for all goroutines exit
@@ -77,29 +75,43 @@ func (d *DataStore) writer(initialEpoch uint64, writeInterval time.Duration) {
 		log.Info().Msg("datastore writer exited")
 	}(&d.waitExit, d.db)
 
+	d.openDatabase()
+	err := d.db.Update(func(txn *badger.Txn) error {
+		err := txnSetUint32(txn, KeyTcpCount, 0)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		err = txnSetUint32(txn, KeyNicCount, 0)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		err = txnSetUint32(txn, KeyNetCount, 0)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		return nil
+	})
+	if err != nil {
+		log.Warn().Err(err).Msg("db initialize write failed")
+	}
+	d.closeDatabase()
+
 	maxCountPerType := d.config.MaxSizePerType()
 	epoch := initialEpoch
 	ticker := time.NewTicker(writeInterval)
 
-	d.openDatabase()
-
 	for {
 		select {
+		case <-d.done:
+			return
 		case now := <-ticker.C:
+			d.openDatabase()
 			log.Trace().Time("now", now).Msg("Write trigger")
 			err := d.doWrite(&epoch, maxCountPerType)
 			if err != nil {
 				log.Warn().Err(errors.WithStack(err)).Msg("Write failed")
 			}
-
-			// check memory usage and reopen db if needed
-			var memstats runtime.MemStats
-			runtime.ReadMemStats(&memstats)
-
-			coolDownReady := d.lastOpen.Add(d.config.MinOpenInterval).Before(time.Now())
-			if coolDownReady && memstats.Sys > d.config.ExpectedRss {
-				d.reopenDatabase()
-			}
+			d.closeDatabase()
 		}
 	}
 }
@@ -222,7 +234,6 @@ func (d *DataStore) openDatabase() {
 	if d.db != nil {
 		log.Fatal().Msg("db should be nil before open it")
 	}
-
 	options := badger.DefaultOptions(d.config.Path).
 		WithLogger(NewBadgerLogger()).
 		WithCompression(boptions.ZSTD).
@@ -234,10 +245,9 @@ func (d *DataStore) openDatabase() {
 		log.Fatal().Err(errors.WithStack(err)).Msg("failed open database")
 	}
 	d.db = db
-	d.lastOpen = time.Now()
 }
 
-func (d *DataStore) reopenDatabase() {
+func (d *DataStore) closeDatabase() {
 	if d.db != nil {
 		err := d.db.Close()
 		if err != nil {
@@ -245,9 +255,7 @@ func (d *DataStore) reopenDatabase() {
 		}
 		d.db = nil
 	}
-
 	debug.FreeOSMemory()
-	d.openDatabase()
 }
 
 func txnSetUint32(txn *badger.Txn, key string, value uint32) error {
