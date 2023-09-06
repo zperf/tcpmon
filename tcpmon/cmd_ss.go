@@ -342,7 +342,6 @@ func (m *SocketMonitor) RunSS(now time.Time) (*TcpMetric, string, error) {
 		var t TcpMetric
 		t.Timestamp = now.Unix()
 		t.Type = MetricType_TCP
-		out := ss_outp
 		ParseSSOutput(&t, st.Stdout)
 		return &t, strings.Join(st.Stdout, "\n"), nil
 	}

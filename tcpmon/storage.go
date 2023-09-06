@@ -16,9 +16,9 @@ import (
 )
 
 type DataStore struct {
-	db     *badger.DB
-	tx     chan *KVPair
-	config DataStoreConfig
+	db       *badger.DB
+	tx       chan *KVPair
+	config   DataStoreConfig
 	lastOpen time.Time
 
 	done       chan struct{}
@@ -112,7 +112,7 @@ func (d *DataStore) writer(initialEpoch uint64, writeInterval time.Duration) {
 	d.openDatabase()
 	d.waitDbInit.Done()
 
-	err := d.db.Update(func(txn *badger.Txn) error {
+	err = d.db.Update(func(txn *badger.Txn) error {
 		err := txnEnsureExistsUint32(txn, KeyTotalCount)
 		if err != nil {
 			return err
@@ -317,6 +317,11 @@ func (d *DataStore) openDatabase() {
 }
 
 func (d *DataStore) reopenDatabase() {
+	d.closeDatabase()
+	d.openDatabase()
+}
+
+func (d *DataStore) closeDatabase() {
 	if d.db != nil {
 		err := d.db.Close()
 		if err != nil {
@@ -324,9 +329,7 @@ func (d *DataStore) reopenDatabase() {
 		}
 		d.db = nil
 	}
-
 	debug.FreeOSMemory()
-	d.openDatabase()
 }
 
 func txnSetUint32(txn *badger.Txn, key string, value uint32) error {
