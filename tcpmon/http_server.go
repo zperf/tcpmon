@@ -12,8 +12,8 @@ import (
 )
 
 func RegisterRoutes(router *gin.Engine, mon *Monitor) {
-	router.GET("/metrics", GetMetrics(mon.datastore))
-	router.GET("/metrics/*name", GetMetric(mon.datastore))
+	// router.GET("/metrics", GetMetrics(mon.datastore))
+	// router.GET("/metrics/*name", GetMetric(mon.datastore))
 	router.GET("/members", GetMember(mon.quorum))
 	router.POST("/members", JoinCluster(mon.quorum))
 	router.POST("/members/leave", LeaveCluster(mon.quorum))

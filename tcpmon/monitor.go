@@ -90,12 +90,12 @@ func (m *Monitor) Run(ctx context.Context) error {
 
 	m.startHttpServer(m.config.HttpListen)
 
-	initialMembers, err := m.datastore.GetMemberAddressList()
-	if err != nil {
-		log.Info().Err(err).Msg("Get members from db failed")
-	} else if len(initialMembers) != 0 {
-		m.quorum.Join(initialMembers)
-	}
+	// initialMembers, err := m.datastore.GetMemberAddressList()
+	// if err != nil {
+	// 	log.Info().Err(err).Msg("Get members from db failed")
+	// } else if len(initialMembers) != 0 {
+	// 	m.quorum.Join(initialMembers)
+	// }
 
 	for {
 		select {

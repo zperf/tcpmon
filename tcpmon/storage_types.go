@@ -22,6 +22,18 @@ const PrefixSignal = "sig"
 // PrefixMember is the member in the cluster
 const PrefixMember = "mbr"
 
+// PrefixMetadata is the metadata of the database
+const PrefixMetadata = "mdt"
+
+var KeyTotalCount = PrefixMetadata + "/count/total"
+var KeyTcpCount = PrefixMetadata + "/count/" + PrefixTcpMetric
+var KeyNicCount = PrefixMetadata + "/count/" + PrefixNicMetric
+var KeyNetCount = PrefixMetadata + "/count/" + PrefixNetMetric
+
+func ValidCountKind(s string) bool {
+	return s == "total" || s == PrefixTcpMetric || s == PrefixNicMetric || s == PrefixNetMetric
+}
+
 func ValidMetricPrefix(s string) bool {
 	return s == PrefixNicMetric || s == PrefixTcpMetric || s == PrefixNetMetric
 }
