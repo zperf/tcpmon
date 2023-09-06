@@ -4,8 +4,6 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	. "github.com/zperf/tcpmon/tcpmon"
 )
 
@@ -154,7 +152,7 @@ IpExt:
 	})
 
 	var r NetstatMetric
-	r.Timestamp = timestamppb.New(time.Now())
+	r.Timestamp = time.Now().UnixMilli()
 	r.Type = MetricType_NET
 	ParseNetstatOutput(&r, lines)
 

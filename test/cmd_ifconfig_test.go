@@ -4,8 +4,6 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	. "github.com/zperf/tcpmon/tcpmon"
 )
 
@@ -43,7 +41,7 @@ lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
 
 	var nic NicMetric
 	nic.Type = MetricType_NIC
-	nic.Timestamp = timestamppb.New(time.Now())
+	nic.Timestamp = time.Now().UnixMilli()
 	ParseIfconfigOutput(&nic, lines)
 
 	assert.Equal(uint64(7), nic.Ifaces[0].TxOverruns)

@@ -4,8 +4,6 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	. "github.com/zperf/tcpmon/tcpmon"
 )
 
@@ -25,7 +23,7 @@ timer:(keepalive,11sec,0) skmem:(r0,rb131072,t0,tb2626560,f0,w0,o0,bl0,d276) ts 
 	lines := strings.FieldsFunc(out, SplitNewline)
 
 	var t TcpMetric
-	t.Timestamp = timestamppb.New(time.Now())
+	t.Timestamp = time.Now().UnixMilli()
 	t.Type = MetricType_TCP
 	ParseSSOutput(&t, lines)
 
