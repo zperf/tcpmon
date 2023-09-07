@@ -56,9 +56,7 @@ var opBackupAllCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(opCmd)
-
 	opBackupAllCmd.Flags().DurationP("timeout", "t", 4*time.Second, "HTTP timeout")
+	rootCmd.AddCommand(opCmd)
 	opCmd.AddCommand(opBackupAllCmd)
-	fatalIf(viper.BindPFlags(opBackupAllCmd.Flags()))
 }
