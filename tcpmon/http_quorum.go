@@ -13,15 +13,15 @@ import (
 func GetMember(q *Quorum) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		members := make(map[string]any)
-		//for _, member := range q.Members() {
-		//	addr := member.Address()
-		//	minfo, err := q.GetMemberMeta(addr)
-		//	if err != nil {
-		//		c.AbortWithStatusJSON(http.StatusInternalServerError, ErrorJSON(err))
-		//		return
-		//	}
-		//	members[member.Address()] = minfo
-		//}
+		for _, member := range q.Members() {
+			addr := member.Address()
+			meta, err := q.GetMemberMeta(addr)
+			if err != nil {
+				c.AbortWithStatusJSON(http.StatusInternalServerError, ErrorJSON(err))
+				return
+			}
+			members[member.Address()] = meta
+		}
 
 		c.JSON(http.StatusOK, gin.H{
 			"len":     len(members),
