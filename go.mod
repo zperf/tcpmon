@@ -1,6 +1,6 @@
 module github.com/zperf/tcpmon
 
-go 1.21.0
+go 1.21
 
 require (
 	github.com/cockroachdb/errors v1.10.0
