@@ -7,20 +7,21 @@ IMAGE_DISTRO="$1"
 docker ps -a | grep 'tcpmon[0-9]' | awk '{print $1}' | parallel docker stop
 docker ps -a | grep 'tcpmon[0-9]' | awk '{print $1}' | parallel docker rm
 
-mkdir -p data/tcpmon1/log
-docker run --name tcpmon1 -d --net=tcpmon -p 6789:6789 -v "$(pwd)/bin:$(pwd)/bin" -w "$(pwd)/bin" \
--v "$(pwd)/data/tcpmon1/log:/tmp/tcpmon/log" \
-"tcpmon:runtime$IMAGE_DISTRO" ./tcpmon-linux start
+for IDX in $(seq 1 3); do
+  mkdir -p "data/tcpmon$IDX/log"
+  docker run --name "tcpmon$IDX" -d --net=tcpmon \
+  -p "$(echo "$IDX" | awk '{print 6788+$1}'):6789" \
+  -p "$(echo "$IDX" | awk '{print 6879+$1}'):6790" \
+  -p "$(echo "$IDX" | awk '{print 2344+$1}'):2345" \
+  -w "$(pwd)/bin" \
+  -v "$(pwd)/bin:$(pwd)/bin" \
+  -v "$(pwd)/data/tcpmon$IDX/log:/tmp/tcpmon/log" \
+  "tcpmon:runtime$IMAGE_DISTRO" \
+  dlv exec --listen=:2345 --headless=true --api-version=2 --accept-multiclient --continue ./tcpmon start
+done
 
-mkdir -p data/tcpmon2/log
-docker run --name tcpmon2 -d --net=tcpmon -v "$(pwd)/bin:$(pwd)/bin" -w "$(pwd)/bin" \
--v "$(pwd)/data/tcpmon2/log:/tmp/tcpmon/log" \
-"tcpmon:runtime$IMAGE_DISTRO" ./tcpmon-linux start
+sleep 1
 
-mkdir -p data/tcpmon3/log
-docker run --name tcpmon3 -d --net=tcpmon -v "$(pwd)/bin:$(pwd)/bin" -w "$(pwd)/bin" \
--v "$(pwd)/data/tcpmon3/log:/tmp/tcpmon/log" \
-"tcpmon:runtime$IMAGE_DISTRO" ./tcpmon-linux start
-
-docker exec -t tcpmon1 bash -c "curl -X POST -d 192.168.228.3:6790 http://192.168.228.2:6789/members"
-docker exec -t tcpmon1 bash -c "curl -X POST -d 192.168.228.4:6790 http://192.168.228.2:6789/members"
+docker exec -t tcpmon1 curl -X POST -d 192.168.228.3:6790 http://192.168.228.2:6789/members
+docker exec -t tcpmon1 curl -X POST -d 192.168.228.4:6790 http://192.168.228.2:6789/members
+docker exec -t tcpmon1 cat /root/.tcpmon/config.yaml

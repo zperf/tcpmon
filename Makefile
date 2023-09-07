@@ -1,19 +1,21 @@
 ROOT_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
+BUILD_FLAGS := -trimpath -gcflags "all=-N -l"
 
-all: build
+.PHONY: all
+all: build-linux
 
 .PHONY: build
-build: build-linux
-	go build -o bin/tcpmon main.go
+build:
+	go build $(BUILD_FLAGS) -o bin/tcpmon main.go
 
 .PHONY: build-linux
 build-linux:
-	GOOS=linux GOARCH=arm64 go build -o bin/tcpmon-linux main.go
+	GOOS=linux GOARCH=arm64 go build $(BUILD_FLAGS) -o bin/tcpmon main.go
 
 .PHONY: release
 release: proto
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -gcflags "all=-N -l" -o bin/tcpmon-x86_64 github.com/zperf/tcpmon
-	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -gcflags "all=-N -l" -o bin/tcpmon-aarch64 github.com/zperf/tcpmon
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build $(BUILD_FLAGS) -o bin/tcpmon-x86_64 github.com/zperf/tcpmon
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build $(BUILD_FLAGS) -o bin/tcpmon-aarch64 github.com/zperf/tcpmon
 
 .PHONY: proto
 proto:
