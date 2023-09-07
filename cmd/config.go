@@ -2,10 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
-	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -33,19 +30,4 @@ var configGetDefaultCmd = &cobra.Command{
 func init() {
 	configCmd.AddCommand(configGetDefaultCmd)
 	rootCmd.AddCommand(configCmd)
-}
-
-func writeDefaultConfig() error {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	parentDir := filepath.Join(home, ".tcpmon")
-	err = os.MkdirAll(parentDir, 0755)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	return errors.WithStack(viper.SafeWriteConfigAs(filepath.Join(parentDir, "config.yaml")))
 }

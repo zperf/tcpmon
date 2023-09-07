@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/cockroachdb/errors"
@@ -32,7 +33,7 @@ func Execute(cmdline string) {
 	if !strings.HasPrefix(cmdline, "config default") {
 		err := viper.ReadInConfig()
 		if err != nil {
-			// config file not found, is must be a dev env
+			// config file not found, it must be a dev env (RPM package will place a default config)
 			// write a default config file to $HOME/.tcpmon/config.yaml
 			var expected viper.ConfigFileNotFoundError
 			if errors.As(err, &expected) {
@@ -45,25 +46,26 @@ func Execute(cmdline string) {
 				log.Fatal().Err(err).Msg("failed to read config file")
 			}
 		}
-		if strings.HasPrefix(cmdline, "start") {
-			log.Info().Str("configFile", viper.ConfigFileUsed()).
-				Str("logDir", viper.GetString("log-dir")).
-				Msg("Config loaded")
-		}
 	}
 
 	// init logger
 	level, _ := zerolog.ParseLevel(viper.GetString("log-level"))
+	disableConsoleLog := viper.GetBool("disable-console")
 	logConfig := &tcpmon.LogConfig{
 		Level:                 level,
 		FileLoggingEnabled:    true,
-		ConsoleLoggingEnabled: !viper.GetBool("disable-console"),
+		ConsoleLoggingEnabled: !disableConsoleLog,
 		Directory:             viper.GetString("log-dir"),
 		Filename:              viper.GetString("log-filename"),
 		MaxSize:               viper.GetInt("log-max-size"),
 		MaxBackups:            viper.GetInt("log-max-count"),
 	}
 	tcpmon.InitLogger(logConfig)
+	if strings.HasPrefix(cmdline, "start") {
+		log.Info().Str("configFile", viper.ConfigFileUsed()).
+			Str("logDir", viper.GetString("log-dir")).
+			Msg("Config loaded")
+	}
 
 	// print warnings after logger initialized
 	if level == zerolog.NoLevel {
@@ -85,4 +87,19 @@ func init() {
 	rootCmd.PersistentFlags().Int("log-max-size", 10, "Maximum size of each log file")
 	rootCmd.PersistentFlags().Int("log-max-count", 5, "Maximum log files to keep")
 	fatalIf(viper.BindPFlags(rootCmd.PersistentFlags()))
+}
+
+func writeDefaultConfig() error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	parentDir := filepath.Join(home, ".tcpmon")
+	err = os.MkdirAll(parentDir, 0755)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return errors.WithStack(viper.SafeWriteConfigAs(filepath.Join(parentDir, "config.yaml")))
 }
