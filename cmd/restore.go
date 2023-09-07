@@ -19,7 +19,6 @@ var restoreCmd = &cobra.Command{
 		src := args[0]
 		output := viper.GetString("output")
 		force := viper.GetBool("force")
-		needPrint := viper.GetBool("print")
 
 		err := os.MkdirAll(output, 0755)
 		if err != nil && !os.IsExist(err) {
@@ -49,10 +48,6 @@ var restoreCmd = &cobra.Command{
 			if err != nil {
 				log.Fatal().Err(err).Str("backupFile", src).Str("Output", output).Msg("Restore failed")
 			}
-
-			if needPrint {
-				DoPrint(db, viper.GetString("prefix"), viper.GetBool("reversed"), nil)
-			}
 		}
 	},
 }
@@ -62,5 +57,4 @@ func init() {
 	restoreCmd.Flags().StringP("output", "O", ".", "output database path")
 	restoreCmd.Flags().BoolP("force", "f", false, "force restore, may overwrite files")
 	restoreCmd.Flags().Bool("print", false, "print database as JSON after restore")
-	addPrintFlags(restoreCmd)
 }
