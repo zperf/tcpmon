@@ -38,9 +38,11 @@ func JoinCluster(q *Quorum) func(c *gin.Context) {
 			return
 		}
 
-		clusterIPAddr := strings.TrimSpace(string(buf))
+		member := strings.TrimSpace(string(buf))
+		members := make(map[string]string)
+		members[member] = ""
 
-		_, err = q.TryJoin([]string{clusterIPAddr})
+		_, err = q.TryJoin(members)
 		if err != nil {
 			c.JSON(http.StatusOK, ErrorJSON(errors.WithStack(err)))
 			return
@@ -54,7 +56,7 @@ func JoinCluster(q *Quorum) func(c *gin.Context) {
 
 func LeaveCluster(q *Quorum) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		err := q.mlist.Leave(3 * time.Second)
+		err := q.Leave(3 * time.Second)
 		c.JSON(http.StatusOK, ErrorJSON(err))
 	}
 }
