@@ -3,7 +3,6 @@ package tcpmon
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/cockroachdb/errors"
 	"github.com/gin-contrib/pprof"
@@ -12,13 +11,16 @@ import (
 )
 
 func RegisterRoutes(router *gin.Engine, mon *Monitor) {
-	// router.GET("/metrics", GetMetrics(mon.datastore))
-	// router.GET("/metrics/*name", GetMetric(mon.datastore))
+	router.GET("/", GetHome)
 	router.GET("/members", GetMember(mon.quorum))
 	router.POST("/members", JoinCluster(mon.quorum))
 	router.POST("/members/leave", LeaveCluster(mon.quorum))
 	router.GET("/backup", GetBackup(mon))
 	pprof.Register(router)
+}
+
+func GetHome(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"service": "tcpmon"})
 }
 
 func GetBackup(mon *Monitor) func(c *gin.Context) {
@@ -32,58 +34,6 @@ func GetBackup(mon *Monitor) func(c *gin.Context) {
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, ErrorJSON(err))
 			return
-		}
-	}
-}
-
-func GetMetric(ds *DataStore) func(c *gin.Context) {
-	return func(c *gin.Context) {
-		metricName := c.Param("name")
-		p, err := ds.Get(strings.TrimPrefix(metricName, "/"))
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, ErrorJSON(err))
-			return
-		}
-		c.JSON(http.StatusOK, p.ToJSON())
-	}
-}
-
-func GetMetrics(ds *DataStore) func(c *gin.Context) {
-	return func(c *gin.Context) {
-		kind := c.Query("type")
-		if !ValidMetricPrefix(kind) && kind != "" {
-			c.AbortWithStatusJSON(http.StatusInternalServerError,
-				ErrorJSON(errors.Newf("invalid type: %v", kind)))
-			return
-		}
-
-		if kind == "" {
-			// without prefix, iterate over all
-			keys, err := ds.GetMetrics()
-			if err != nil {
-				c.AbortWithStatusJSON(http.StatusInternalServerError, ErrorJSON(err))
-				return
-			}
-			c.JSON(http.StatusOK, gin.H{
-				"len":  len(keys),
-				"keys": keys,
-			})
-		} else {
-			// with prefix
-			pairs, err := ds.GetPrefix([]byte(kind), 0, false)
-			if err != nil {
-				c.AbortWithStatusJSON(http.StatusInternalServerError, ErrorJSON(err))
-				return
-			}
-
-			keys := make([]string, 0)
-			for _, p := range pairs {
-				keys = append(keys, p.Key)
-			}
-			c.JSON(http.StatusOK, gin.H{
-				"len":  len(keys),
-				"keys": keys,
-			})
 		}
 	}
 }
