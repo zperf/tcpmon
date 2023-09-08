@@ -16,10 +16,10 @@ import (
 
 // LogConfig for logging
 type LogConfig struct {
-	// Log level
+	// Level the log level
 	Level zerolog.Level
 
-	// Enable console logging
+	// ConsoleLoggingEnabled console logging enabled or not
 	ConsoleLoggingEnabled bool
 
 	// FileLoggingEnabled makes the framework log to a file
@@ -97,7 +97,7 @@ type BadgerDbLogger struct {
 
 func NewBadgerLogger() *BadgerDbLogger {
 	return &BadgerDbLogger{
-		log: log.With().Str("mod", "badger").Logger(),
+		log: log.With().Str("mod", "badger").Logger().Level(zerolog.WarnLevel),
 	}
 }
 
@@ -123,7 +123,7 @@ type MemberlistLogger struct {
 
 func NewMemberlistLogger() *MemberlistLogger {
 	return &MemberlistLogger{
-		log: log.With().Str("mod", "memberlist").Logger(),
+		log: log.With().Str("mod", "memberlist").Logger().Level(zerolog.WarnLevel),
 	}
 }
 
