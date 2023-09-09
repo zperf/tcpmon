@@ -1,8 +1,7 @@
-package tcpmon
+package v1
 
 import (
 	"fmt"
-	"runtime"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -16,22 +15,18 @@ import (
 )
 
 type DataStore struct {
-	db       *badger.DB
-	tx       chan *KVPair
-	config   DataStoreConfig
-	lastOpen time.Time
+	db     *badger.DB
+	tx     chan *MetricContext
+	config DataStoreConfig
 
-	done       chan struct{}
-	waitExit   sync.WaitGroup // wait for all goroutines exit
-	waitDbInit sync.WaitGroup
+	done     chan struct{}
+	waitExit sync.WaitGroup // wait for all goroutines exit
 }
 
 type DataStoreConfig struct {
-	Path            string
-	MaxSize         uint32
-	WriteInterval   time.Duration
-	ExpectedRatio   float32
-	MinOpenInterval time.Duration
+	Path          string
+	MaxSize       uint32
+	WriteInterval time.Duration
 }
 
 func (c *DataStoreConfig) MaxSizePerType() uint32 {
@@ -45,23 +40,19 @@ func NewDataStore(initialEpoch uint64, config *DataStoreConfig) *DataStore {
 	}
 
 	log.Info().Uint64("initialEpoch", initialEpoch).Msg("Created")
-	tx := make(chan *KVPair, 256)
+	tx := make(chan *MetricContext, 512)
 	d := &DataStore{
 		done:   make(chan struct{}),
 		config: *config,
 		tx:     tx,
 	}
 	d.waitExit.Add(1)
-	d.waitDbInit.Add(1)
-
 	go d.writer(initialEpoch, config.WriteInterval)
-
-	d.waitDbInit.Wait()
 	return d
 }
 
 // Tx returns a send-only channel
-func (d *DataStore) Tx() chan<- *KVPair {
+func (d *DataStore) Tx() chan<- *MetricContext {
 	return d.tx
 }
 
@@ -84,35 +75,12 @@ func (d *DataStore) writer(initialEpoch uint64, writeInterval time.Duration) {
 		d.waitExit.Done()
 	}(d)
 
-	d.openDatabase()
-	err := d.db.Update(func(txn *badger.Txn) error {
-		err := txnSetUint32(txn, KeyTcpCount, 0)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		err = txnSetUint32(txn, KeyNicCount, 0)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		err = txnSetUint32(txn, KeyNetCount, 0)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		return nil
-	})
-	if err != nil {
-		log.Warn().Err(err).Msg("db initialize write failed")
-	}
-	d.closeDatabase()
-
 	maxCountPerType := d.config.MaxSizePerType()
 	epoch := initialEpoch
 	ticker := time.NewTicker(writeInterval)
+	d.openDB()
 
-	d.openDatabase()
-	d.waitDbInit.Done()
-
-	err = d.db.Update(func(txn *badger.Txn) error {
+	err := d.db.Update(func(txn *badger.Txn) error {
 		err := txnEnsureExistsUint32(txn, KeyTotalCount)
 		if err != nil {
 			return err
@@ -138,6 +106,7 @@ func (d *DataStore) writer(initialEpoch uint64, writeInterval time.Duration) {
 	if err != nil {
 		log.Fatal().Err(err).Msg("ensure metadata exists failed")
 	}
+	d.closeDB()
 
 	for {
 		select {
@@ -145,33 +114,19 @@ func (d *DataStore) writer(initialEpoch uint64, writeInterval time.Duration) {
 			return
 		case now := <-ticker.C:
 			log.Trace().Time("now", now).Msg("Write trigger")
+			d.openDB()
 			err := d.doWrite(&epoch, maxCountPerType)
 			if err != nil {
 				log.Warn().Err(err).Msg("Write failed")
 			}
-
-			coolDownReady := d.lastOpen.Add(d.config.MinOpenInterval).Before(time.Now())
-			if coolDownReady {
-				// check memory usage and reopen db if needed
-				var memStats runtime.MemStats
-				runtime.ReadMemStats(&memStats)
-
-				ratio := 1 - float32(memStats.Alloc)/float32(memStats.Sys)
-				if ratio-d.config.ExpectedRatio >= float32(1e-9) {
-					log.Info().Float32("memStats.Sys(MiB)", float32(memStats.Sys)/(1<<20)).
-						Float32("memStats.Alloc(MiB)", float32(memStats.Alloc)/(1<<20)).
-						Float32("ratio", ratio).
-						Msg("reopen database")
-					d.reopenDatabase()
-				}
-			}
+			d.closeDB()
 		}
 	}
 }
 
 func (d *DataStore) doWrite(epoch *uint64, maxCountPerType uint32) error {
 	// reap requests from queue
-	toWrite := make([]*KVPair, 0)
+	toWrite := make([]*MetricContext, 0)
 reap:
 	for {
 		select {
@@ -297,31 +252,27 @@ reap:
 	return nil
 }
 
-func (d *DataStore) openDatabase() {
+func (d *DataStore) openDB() {
 	if d.db != nil {
-		log.Fatal().Msg("db should be nil before open it")
+		log.Fatal().Msg("db should be nil before opening it")
 	}
 
 	options := badger.DefaultOptions(d.config.Path).
 		WithLogger(NewBadgerLogger()).
 		WithCompression(boptions.ZSTD).
 		WithZSTDCompressionLevel(1).
-		WithNumMemtables(1)
+		WithNumMemtables(1).
+		WithCompactL0OnClose(true)
 
 	db, err := badger.Open(options)
 	if err != nil {
 		log.Fatal().Err(errors.WithStack(err)).Msg("failed open database")
 	}
+
 	d.db = db
-	d.lastOpen = time.Now()
 }
 
-func (d *DataStore) reopenDatabase() {
-	d.closeDatabase()
-	d.openDatabase()
-}
-
-func (d *DataStore) closeDatabase() {
+func (d *DataStore) closeDB() {
 	if d.db != nil {
 		err := d.db.Close()
 		if err != nil {

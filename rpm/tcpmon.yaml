@@ -9,10 +9,8 @@ cmd-ss2: /usr/sbin/ss
 cmd-timeout: 1s
 collect-interval: 1s
 db: /var/lib/tcpmon
-db-expected-rss: "209715200"
 db-max-size: "2000000"
-db-min-open-interval: 1m0s
-db-write-interval: 3s
+db-write-interval: 60s
 listen: 0.0.0.0:6789
 log-dir: /var/log/tcpmon
 log-filename: tcpmon.log

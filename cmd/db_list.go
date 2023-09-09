@@ -6,8 +6,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-
-	. "github.com/zperf/tcpmon/tcpmon"
+	v1 "github.com/zperf/tcpmon/tcpmon/storage/v1"
 )
 
 var dbListCmd = &cobra.Command{
@@ -21,7 +20,7 @@ var dbListCmd = &cobra.Command{
 		db := openBadgerForRead(path)
 		defer db.Close()
 
-		pairs, err := GetPrefix(db, []byte(prefix), 0, false)
+		pairs, err := v1.GetPrefix(db, []byte(prefix), 0, false)
 		if err != nil {
 			log.Fatal().Err(err).Msg("Get pairs by prefix failed")
 		}

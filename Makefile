@@ -2,7 +2,7 @@ ROOT_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 BUILD_FLAGS := -trimpath -gcflags "all=-N -l"
 
 .PHONY: all
-all: build-linux
+all: build
 
 .PHONY: build
 build:
@@ -10,7 +10,7 @@ build:
 
 .PHONY: build-linux
 build-linux:
-	GOOS=linux GOARCH=arm64 go build $(BUILD_FLAGS) -o bin/tcpmon main.go
+	GOOS=linux go build $(BUILD_FLAGS) -o bin/tcpmon main.go
 
 .PHONY: release
 release: proto

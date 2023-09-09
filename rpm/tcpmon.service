@@ -1,5 +1,5 @@
 [Unit]
-Description=Tcpmon - a portable network monitor
+Description=Tcpmon - simple network monitor
 After=network.target
 
 [Service]
@@ -7,9 +7,9 @@ Type=simple
 ExecStart=/usr/bin/tcpmon start
 User=root
 Group=root
-
 Restart=always
 RestartSec=3
+MemoryMax=300M
 
 [Install]
 WantedBy=multi-user.target

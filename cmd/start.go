@@ -12,24 +12,20 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/zperf/tcpmon/tcpmon"
+	storagev2 "github.com/zperf/tcpmon/tcpmon/storage/v2"
 )
 
 var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start monitoring",
 	Run: func(cmd *cobra.Command, args []string) {
-		// create and start monitor
+		datastoreConfig := storagev2.NewConfig(viper.GetString("db"))
+
 		m, err := tcpmon.New(tcpmon.MonitorConfig{
 			CollectInterval: viper.GetDuration("collect-interval"),
 			HttpListen:      viper.GetString("listen"),
 			QuorumPort:      viper.GetInt("quorum-port"),
-			DataStoreConfig: tcpmon.DataStoreConfig{
-				Path:            viper.GetString("db"),
-				MaxSize:         viper.GetUint32("db-max-size"),
-				WriteInterval:   viper.GetDuration("db-write-interval"),
-				ExpectedRatio:   float32(viper.GetFloat64("db-mem-ratio")),
-				MinOpenInterval: viper.GetDuration("db-min-open-interval"),
-			},
+			DataStoreConfig: *datastoreConfig,
 		})
 		if err != nil {
 			log.Fatal().Err(err).Msg("Create tcpmon failed")
@@ -48,7 +44,7 @@ var startCmd = &cobra.Command{
 var startTestCmd = &cobra.Command{
 	Use:     "test",
 	Short:   "Test this machines can run daemon",
-	Example: `  tcpmon-linux start test > test.sh; bash test.sh`,
+	Example: `  tcpmon start test > test.sh; bash test.sh`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("#!/usr/bin/env bash")
 		fmt.Println("set -x")
@@ -81,9 +77,7 @@ func init() {
 	// db flags
 	startCmd.PersistentFlags().String("db", "/tmp/tcpmon/db", "Database path")
 	startCmd.PersistentFlags().Uint32("db-max-size", 2000000, "Maximum number of records in the database")
-	startCmd.PersistentFlags().Duration("db-write-interval", 3*time.Second, "Write interval")
-	startCmd.PersistentFlags().Float32("db-mem-ratio", 0.4, "Reopen database while (sys-alloc)/sys is larger than this ratio")
-	startCmd.PersistentFlags().Duration("db-min-open-interval", 1*time.Minute, "Database reopen interval")
+	startCmd.PersistentFlags().Duration("db-write-interval", 60*time.Second, "Write interval")
 
 	fatalIf(viper.BindPFlags(startCmd.PersistentFlags()))
 	rootCmd.AddCommand(startCmd)

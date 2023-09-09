@@ -13,14 +13,10 @@ import (
 
 type Quorum struct {
 	mlist *memberlist.Memberlist
-	ds    *DataStore
-	// listenAddr IpAddr
 }
 
-func NewQuorum(ds *DataStore, monitorConfig *MonitorConfig) *Quorum {
-	q := &Quorum{
-		ds: ds,
-	}
+func NewQuorum(monitorConfig *MonitorConfig) *Quorum {
+	q := &Quorum{}
 
 	// create memberlist
 	config := memberlist.DefaultLANConfig()
@@ -101,10 +97,6 @@ func (q *Quorum) NotifyUpdate(node *memberlist.Node) {
 	q.configMemberUpdate(node.Address(), string(node.Meta))
 }
 
-func (q *Quorum) Local() *memberlist.Node {
-	return q.mlist.LocalNode()
-}
-
 func (q *Quorum) Members() []*memberlist.Node {
 	return q.mlist.Members()
 }
@@ -143,10 +135,6 @@ func (q *Quorum) Join(members map[string]string, retry int, delay time.Duration)
 
 func (q *Quorum) MyIP() net.IP {
 	return net.ParseIP(GetIpFromAddress(q.mlist.LocalNode().Address()))
-}
-
-func (q *Quorum) My() *memberlist.Node {
-	return q.mlist.LocalNode()
 }
 
 func (q *Quorum) GetMemberMeta(member string) (string, error) {

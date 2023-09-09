@@ -1,109 +1,54 @@
 package cmd
 
 import (
-	"os"
-
-	"github.com/dgraph-io/badger/v4"
+	"github.com/cockroachdb/errors"
 	"github.com/gogo/protobuf/proto"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+
 	"github.com/zperf/tcpmon/tcpmon"
+	storagev2 "github.com/zperf/tcpmon/tcpmon/storage/v2"
 )
 
-var format string
-var dbDir string
-var force bool
+var FlagExportFormat = exportFormatTsdb
 
 var exportCmd = &cobra.Command{
-	Use:   "export",
+	Use:   "export [BASE_DIR] [HOSTNAME]",
 	Short: "export backup file to txt file",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		backupFile := args[0]
+		baseDir := args[0]
 		hostname := args[1]
 
 		var printer tcpmon.MetricPrinter
-		switch format {
+		switch FlagExportFormat.String() {
 		case "tsdb":
 			printer = tcpmon.TSDBMetricPrinter{}
-		default:
-			log.Fatal().Msg("Format not supported")
 		}
 
-		err := os.MkdirAll(dbDir, 0755)
-		if err != nil && !os.IsExist(err) {
-			log.Fatal().Err(err).Msg("Create db directory failed")
-		}
-
-		isEmpty, err := IsDirEmpty(dbDir)
+		reader, err := storagev2.NewDataStoreReader(baseDir, nil)
 		if err != nil {
-			log.Fatal().Err(err).Msg("Check db directory failed")
+			log.Fatal().Err(err).Msg("Open datastore failed")
 		}
+		defer reader.Close()
 
-		if !force && !isEmpty {
-			log.Fatal().Msg("db is not empty, please clear db or use '-f'")
-		}
+		err = reader.Iterate(func(buf []byte) {
+			log.Info().Int("bufLen", len(buf)).Msg("Read buffer")
 
-		db, err := badger.Open(badger.DefaultOptions(dbDir).
-			WithLogger(&tcpmon.BadgerDbLogger{}))
-		if err != nil {
-			log.Fatal().Err(err).Msg("Open db for write failed")
-		}
-		defer db.Close()
-
-		err = db.DropAll()
-		if err != nil {
-			log.Fatal().Err(err).Msg("Clear db failed")
-		}
-
-		fh, err := os.Open(backupFile)
-		if err != nil {
-			log.Fatal().Err(err).Msg("Open backup file failed")
-		}
-
-		err = db.Load(fh, 256)
-		if err != nil {
-			log.Fatal().Err(err).Str("backupFile", backupFile).Str("db", dbDir).Msg("Restore failed")
-		}
-
-		err = db.View(func(txn *badger.Txn) error {
-			opts := badger.DefaultIteratorOptions
-			it := txn.NewIterator(opts)
-			defer it.Close()
-			for it.Rewind(); it.Valid(); it.Next() {
-				item := it.Item()
-				key := string(item.Key())
-				valByte, err := item.ValueCopy(nil)
-				if err != nil {
-					log.Err(err).Str("key", key).Msg("Get value failed")
-				}
-				switch key[0:3] {
-				case "net":
-					var val tcpmon.NetstatMetric
-					err = proto.Unmarshal(valByte, &val)
-					if err != nil {
-						log.Err(err).Str("key", key).Msg("Unmarshal failed")
-					}
-					printer.PrintNetstatMetric(&val, hostname)
-				case "nic":
-					var val tcpmon.NicMetric
-					err = proto.Unmarshal(valByte, &val)
-					if err != nil {
-						log.Err(err).Str("key", key).Msg("Unmarshal failed")
-					}
-					printer.PrintNicMetric(&val, hostname)
-				case "tcp":
-					var val tcpmon.TcpMetric
-					err = proto.Unmarshal(valByte, &val)
-					if err != nil {
-						log.Err(err).Str("key", key).Msg("Unmarshal failed")
-					}
-					printer.PrintTcpMetric(&val, hostname)
-				default:
-					log.Warn().Str("key", key).Msg("wrong key format")
-				}
+			var msg tcpmon.Metric
+			err := proto.Unmarshal(buf, &msg)
+			if err != nil {
+				log.Fatal().Err(err).Msg("Unmarshal failed")
 			}
-			return nil
+
+			switch m := msg.Body.(type) {
+			case *tcpmon.Metric_Tcp:
+				printer.PrintTcpMetric(m.Tcp, hostname)
+			case *tcpmon.Metric_Net:
+				printer.PrintNetstatMetric(m.Net, hostname)
+			case *tcpmon.Metric_Nic:
+				printer.PrintNicMetric(m.Nic, hostname)
+			}
 		})
 		if err != nil {
 			log.Err(err).Msg("Read db failed")
@@ -111,9 +56,31 @@ var exportCmd = &cobra.Command{
 	},
 }
 
+type ExportFormat string
+
+const (
+	exportFormatTsdb ExportFormat = "tsdb"
+)
+
+func (f *ExportFormat) String() string {
+	return string(*f)
+}
+
+func (f *ExportFormat) Set(v string) error {
+	switch v {
+	case "tsdb":
+		*f = ExportFormat(v)
+		return nil
+	default:
+		return errors.New("Export to tsdb format is the only supported")
+	}
+}
+
+func (f *ExportFormat) Type() string {
+	return "ExportFormat"
+}
+
 func init() {
-	exportCmd.Flags().StringVar(&format, "format", "tsdb", "export backup to txt in this format")
-	exportCmd.Flags().StringVarP(&dbDir, "db", "d", "/tmp/tcpmon/export/db", "db path to restore backup")
-	exportCmd.Flags().BoolVarP(&force, "force", "f", false, "force restore, may overwrite files")
+	exportCmd.Flags().Var(&FlagExportFormat, "format", "export backup to txt in this format")
 	rootCmd.AddCommand(exportCmd)
 }
