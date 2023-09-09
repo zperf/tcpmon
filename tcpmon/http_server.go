@@ -30,11 +30,8 @@ func GetBackup(mon *Monitor) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		c.Writer.Header().Set("Content-Type", "application/octet-stream")
 		c.Writer.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
-		_, err := mon.datastore.Backup(c.Writer, 0)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, ErrorJSON(err))
-			return
-		}
+		// TODO
+		panic(nil)
 	}
 }
 

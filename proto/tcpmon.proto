@@ -1,5 +1,13 @@
 syntax = "proto3";
 
+message Metric {
+  oneof body {
+    TcpMetric tcp = 1;
+    NicMetric nic = 2;
+    NetstatMetric net = 3;
+  }
+}
+
 enum MetricType {
   TCP = 0;
   NIC = 1;

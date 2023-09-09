@@ -7,6 +7,20 @@ import (
 	. "github.com/zperf/tcpmon/tcpmon"
 )
 
+//func (s *CommandParserTestSuite) TestParseLongSS() {
+//	assert := s.Assert()
+//
+//	lines := make([]string, 0)
+//	fh, err := os.Open("ss.txt")
+//	// assert.req
+//	// TODO
+//
+//	var t TcpMetric
+//	t.Timestamp = time.Now().UnixMilli()
+//	t.Type = MetricType_TCP
+//	ParseSSOutput(&t, lines)
+//}
+
 func (s *CommandParserTestSuite) TestParseSS() {
 	assert := s.Assert()
 

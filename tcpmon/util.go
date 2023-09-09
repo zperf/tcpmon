@@ -1,9 +1,6 @@
 package tcpmon
 
 import (
-	"crypto/rand"
-	"encoding/binary"
-	"fmt"
 	"os"
 	"regexp"
 	"strconv"
@@ -12,15 +9,6 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog/log"
 )
-
-func randUint64() (uint64, error) {
-	var b [8]byte
-	_, err := rand.Read(b[:])
-	if err != nil {
-		return 0, err
-	}
-	return binary.LittleEndian.Uint64(b[:]), nil
-}
 
 func ParseUint32(s string) (uint32, error) {
 	val, err := strconv.ParseUint(s, 10, 32)
@@ -74,33 +62,6 @@ func GetIpFromAddress(s string) string {
 		return s
 	}
 	return s[:p]
-}
-
-type IpAddr struct {
-	Address string
-	Port    int
-}
-
-func ParseIpAddr(s string) *IpAddr {
-	p := strings.Index(s, ":")
-	if p == -1 {
-		return nil
-	}
-
-	port, err := strconv.ParseInt(s[p+1:], 10, 32)
-	if err != nil {
-		log.Warn().Err(errors.WithStack(err)).Msg("Parse failed")
-		return nil
-	}
-
-	return &IpAddr{
-		Address: s[:p],
-		Port:    int(port),
-	}
-}
-
-func (a *IpAddr) String() string {
-	return fmt.Sprintf("%s:%d", a.Address, a.Port)
 }
 
 func FileExists(s string) (bool, error) {

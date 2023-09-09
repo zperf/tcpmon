@@ -7,8 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-
-	"github.com/zperf/tcpmon/tcpmon"
+	v1 "github.com/zperf/tcpmon/tcpmon/storage/v1"
 )
 
 var restoreCmd = &cobra.Command{
@@ -32,7 +31,7 @@ var restoreCmd = &cobra.Command{
 
 		if force || isEmpty {
 			db, err := badger.Open(badger.DefaultOptions(output).
-				WithLogger(&tcpmon.BadgerDbLogger{}).
+				WithLogger(v1.NewBadgerLogger()).
 				WithCompactL0OnClose(true))
 			if err != nil {
 				log.Fatal().Err(err).Msg("Open db for write failed")

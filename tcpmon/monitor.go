@@ -6,9 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
+
+	storagev2 "github.com/zperf/tcpmon/tcpmon/storage/v2"
 )
 
 type Monitor struct {
@@ -16,39 +17,37 @@ type Monitor struct {
 	sockMon    *SocketMonitor
 	ifaceMon   *NicMonitor
 	netstatMon *NetstatMonitor
-	datastore  *DataStore
+	datastore  *storagev2.DataStore
 	httpServer *http.Server
 	quorum     *Quorum
 }
 
 type MonitorConfig struct {
-	DataStoreConfig
-
 	QuorumPort      int
 	CollectInterval time.Duration
 	HttpListen      string
+	DataStoreConfig storagev2.Config
 }
 
 func New(config MonitorConfig) (*Monitor, error) {
-	epoch, err := randUint64()
+	ds, err := storagev2.NewDataStore(&config.DataStoreConfig)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to generate initial epoch")
+		return nil, err
 	}
 
-	ds := NewDataStore(epoch, &config.DataStoreConfig)
 	cmdConfig := NewCmdConfig()
 
 	return &Monitor{
 		config:     config,
+		datastore:  ds,
+		quorum:     NewQuorum(&config),
 		sockMon:    &SocketMonitor{cmdConfig},
 		ifaceMon:   &NicMonitor{cmdConfig},
 		netstatMon: &NetstatMonitor{cmdConfig},
-		datastore:  ds,
-		quorum:     NewQuorum(ds, &config),
 	}, nil
 }
 
-func (m *Monitor) Collect(now time.Time, tx chan<- *KVPair) {
+func (m *Monitor) Collect(now time.Time, tx chan<- *storagev2.MetricContext) {
 	var wg sync.WaitGroup
 	wg.Add(3)
 
@@ -87,7 +86,6 @@ func (m *Monitor) Collect(now time.Time, tx chan<- *KVPair) {
 
 func (m *Monitor) Run(ctx context.Context) error {
 	ticker := time.NewTicker(m.config.CollectInterval)
-	tx := m.datastore.Tx()
 
 	m.startHttpServer(m.config.HttpListen)
 
@@ -99,12 +97,31 @@ func (m *Monitor) Run(ctx context.Context) error {
 		}
 	}
 
+	tx := make(chan *storagev2.MetricContext, 256)
+
+	go func() {
+		for {
+			select {
+			case c := <-tx:
+				err := m.datastore.Put(c.Value)
+				if err != nil {
+					log.Fatal().Err(err).Msg("Write failed")
+				}
+
+			case <-ctx.Done():
+				log.Info().Msg("Shutting down writer...")
+				return
+			}
+		}
+	}()
+
 	for {
 		select {
 		case now := <-ticker.C:
 			m.Collect(now, tx)
+
 		case <-ctx.Done():
-			log.Info().Err(ctx.Err()).Msg("shutting down...")
+			log.Info().Msg("Shutting down monitor...")
 			m.Close()
 			return nil
 		}
@@ -117,12 +134,17 @@ func (m *Monitor) Close() {
 		defer cancel()
 		err := m.httpServer.Shutdown(ctx)
 		if err != nil {
-			log.Warn().Err(err).Msg("failed shutdown HTTP server")
+			log.Warn().Err(err).Msg("Shutdown HTTP server failed")
 		}
 	}
+
 	if m.datastore != nil {
-		m.datastore.Close()
+		err := m.datastore.Close()
+		if err != nil {
+			log.Warn().Err(err).Msg("Close datastore failed")
+		}
 	}
+
 	if m.quorum != nil {
 		m.quorum.Close()
 	}
