@@ -10,9 +10,9 @@ func boolToUint32(x bool) uint32 {
 	}
 }
 
-type TSDBPrintMetric struct {}
+type TSDBMetricPrinter struct {}
 
-func (tsdb TSDBPrintMetric) PrintTcpMetric(m *TcpMetric, hostname string) {
+func (tsdb TSDBMetricPrinter) PrintTcpMetric(m *TcpMetric, hostname string) {
 	for _, socket := range m.GetSockets() {
 		fmt.Printf("State type=tcp,hostname=%s,LocalAddr=%s,PeerAddr=%s %d %d\n", hostname, socket.GetLocalAddr(), socket.GetPeerAddr(), m.GetTimestamp(), socket.GetState())
 		fmt.Printf("RecvQ type=tcp,hostname=%s,LocalAddr=%s,PeerAddr=%s %d %d\n", hostname, socket.GetLocalAddr(), socket.GetPeerAddr(), m.GetTimestamp(), socket.GetRecvQ())
@@ -82,7 +82,7 @@ func (tsdb TSDBPrintMetric) PrintTcpMetric(m *TcpMetric, hostname string) {
 	}
 }
 
-func (tsdb TSDBPrintMetric) PrintNicMetric(m *NicMetric, hostname string) {
+func (tsdb TSDBMetricPrinter) PrintNicMetric(m *NicMetric, hostname string) {
 	for _, iface := range m.GetIfaces() {
 		fmt.Printf("RxErrors type=nic,hostname=%s,name=%s %d %d\n", hostname, iface.GetName(), m.GetTimestamp(), iface.GetRxErrors())
 		fmt.Printf("RxDropped type=nic,hostname=%s,name=%s %d %d\n", hostname, iface.GetName(), m.GetTimestamp(), iface.GetRxDropped())
@@ -96,7 +96,7 @@ func (tsdb TSDBPrintMetric) PrintNicMetric(m *NicMetric, hostname string) {
 	}
 }
 
-func (tsdb TSDBPrintMetric) PrintNetstatMetric(m *NetstatMetric, hostname string) {
+func (tsdb TSDBMetricPrinter) PrintNetstatMetric(m *NetstatMetric, hostname string) {
 	fmt.Printf("IpTotalPacketsReceived type=net,hostname=%s %d %d\n", hostname, m.GetTimestamp(), m.GetIpTotalPacketsReceived())
 	fmt.Printf("IpForwarded type=net,hostname=%s %d %d\n", hostname, m.GetTimestamp(), m.GetIpForwarded())
 	fmt.Printf("IpIncomingPacketsDiscarded type=net,hostname=%s %d %d\n", hostname, m.GetTimestamp(), m.GetIpIncomingPacketsDiscarded())

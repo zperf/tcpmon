@@ -40,7 +40,7 @@ func boolToUint32(x bool) uint32 {
 	}
 }
 
-type TSDBPrintMetric struct {}
+type TSDBMetricPrinter struct {}
 
 `
 	_, err = goFile.WriteString(s)
@@ -62,7 +62,7 @@ type TSDBPrintMetric struct {}
 		if flag == 0 { // default value
 			if line == "message NetstatMetric {" {
 				flag = 1
-				s := "func (tsdb TSDBPrintMetric) PrintNetstatMetric(m *NetstatMetric, hostname string) {\n"
+				s := "func (tsdb TSDBMetricPrinter) PrintNetstatMetric(m *NetstatMetric, hostname string) {\n"
 				_, err = goFile.WriteString(s)
 				if err != nil {
 					fmt.Printf("Error writing to file: %v\n", err)
@@ -70,7 +70,7 @@ type TSDBPrintMetric struct {}
 				}
 			} else if line == "message IfaceMetric {" {
 				flag = 2
-				s := "func (tsdb TSDBPrintMetric) PrintNicMetric(m *NicMetric, hostname string) {\n"
+				s := "func (tsdb TSDBMetricPrinter) PrintNicMetric(m *NicMetric, hostname string) {\n"
 				s += "\tfor _, iface := range m.GetIfaces() {\n"
 				_, err = goFile.WriteString(s)
 				if err != nil {
@@ -79,7 +79,7 @@ type TSDBPrintMetric struct {}
 				}
 			} else if line == "message SocketMetric {" {
 				flag = 3
-				s := "func (tsdb TSDBPrintMetric) PrintTcpMetric(m *TcpMetric, hostname string) {\n"
+				s := "func (tsdb TSDBMetricPrinter) PrintTcpMetric(m *TcpMetric, hostname string) {\n"
 				s += "\tfor _, socket := range m.GetSockets() {\n"
 				_, err = goFile.WriteString(s)
 				if err != nil {

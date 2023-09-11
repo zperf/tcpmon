@@ -1,6 +1,6 @@
 package tcpmon
 
-type PrintMetric interface {
+type MetricPrinter interface {
 	PrintNetstatMetric(*NetstatMetric, string)
 	PrintNicMetric(*NicMetric, string)
 	PrintTcpMetric(*TcpMetric, string)

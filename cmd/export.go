@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"net"
 	"os"
 
 	"github.com/dgraph-io/badger/v4"
@@ -23,14 +22,10 @@ var exportCmd = &cobra.Command{
 		backupFile := args[0]
 		hostname := args[1]
 
-		if net.ParseIP(hostname) == nil {
-			log.Fatal().Msg("Invalid IP address")
-		}
-
-		var printer tcpmon.PrintMetric
+		var printer tcpmon.MetricPrinter
 		switch format {
 		case "tsdb":
-			printer = tcpmon.TSDBPrintMetric{}
+			printer = tcpmon.TSDBMetricPrinter{}
 		default:
 			log.Fatal().Msg("Format not supported")
 		}
@@ -42,7 +37,7 @@ var exportCmd = &cobra.Command{
 
 		isEmpty, err := IsDirEmpty(dbDir)
 		if err != nil {
-			log.Fatal().Err(err).Msg("Check db directory failed, need an empty directory")
+			log.Fatal().Err(err).Msg("Check db directory failed")
 		}
 
 		if force || isEmpty {
@@ -53,11 +48,9 @@ var exportCmd = &cobra.Command{
 			}
 			defer db.Close()
 
-			if !isEmpty {
-				err = db.DropAll()
-				if err != nil {
-					log.Fatal().Err(err).Msg("Clear db failed")
-				}
+			err = db.DropAll()
+			if err != nil {
+				log.Fatal().Err(err).Msg("Clear db failed")
 			}
 
 			fh, err := os.Open(backupFile)
@@ -113,15 +106,15 @@ var exportCmd = &cobra.Command{
 				log.Err(err).Msg("Read db failed")
 			}
 		} else {
-			log.Fatal().Msg("db is not empty, please clear db or use '-e'")
+			log.Fatal().Msg("db is not empty, please clear db or use '-f'")
 			return
 		}
 	},
 }
 
 func init() {
-	exportCmd.Flags().StringVarP(&format, "format", "f", "tsdb", "export backup to txt in this format")
+	exportCmd.Flags().StringVar(&format, "format", "tsdb", "export backup to txt in this format")
 	exportCmd.Flags().StringVarP(&dbDir, "db", "d", "/tmp/tcpmon/export/db", "db path to restore backup")
-	exportCmd.Flags().BoolVarP(&force, "force", "e", false, "force restore, may overwrite files")
+	exportCmd.Flags().BoolVarP(&force, "force", "f", false, "force restore, may overwrite files")
 	rootCmd.AddCommand(exportCmd)
 }
