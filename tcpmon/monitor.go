@@ -8,6 +8,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 )
 
 type Monitor struct {
@@ -90,12 +91,13 @@ func (m *Monitor) Run(ctx context.Context) error {
 
 	m.startHttpServer(m.config.HttpListen)
 
-	// initialMembers, err := m.datastore.GetMemberAddressList()
-	// if err != nil {
-	// 	log.Info().Err(err).Msg("Get members from db failed")
-	// } else if len(initialMembers) != 0 {
-	// 	m.quorum.Join(initialMembers)
-	// }
+	members := viper.GetStringMapString("members")
+	if members != nil {
+		_, err := m.quorum.TryJoin(members)
+		if err != nil {
+			log.Warn().Err(err).Msg("Join cluster failed")
+		}
+	}
 
 	for {
 		select {

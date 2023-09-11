@@ -13,7 +13,6 @@ db-expected-rss: "209715200"
 db-max-size: "2000000"
 db-min-open-interval: 1m0s
 db-write-interval: 3s
-disable-console: true
 listen: 0.0.0.0:6789
 log-dir: /var/log/tcpmon
 log-filename: tcpmon.log

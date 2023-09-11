@@ -3,7 +3,7 @@ package tcpmon
 import "fmt"
 
 func boolToUint32(x bool) uint32 {
-	if x == false {
+	if !x {
 		return 0
 	} else {
 		return 1

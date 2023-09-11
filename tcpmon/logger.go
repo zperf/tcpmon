@@ -97,7 +97,7 @@ type BadgerDbLogger struct {
 
 func NewBadgerLogger() *BadgerDbLogger {
 	return &BadgerDbLogger{
-		log: log.With().Str("mod", "badger").Logger().Level(zerolog.InfoLevel),
+		log: log.With().Str("mod", "badger").Logger(),
 	}
 }
 
@@ -123,7 +123,7 @@ type MemberlistLogger struct {
 
 func NewMemberlistLogger() *MemberlistLogger {
 	return &MemberlistLogger{
-		log: log.With().Str("mod", "memberlist").Logger().Level(zerolog.InfoLevel),
+		log: log.With().Str("mod", "memberlist").Logger(),
 	}
 }
 

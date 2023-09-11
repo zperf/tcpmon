@@ -31,7 +31,7 @@ func main() {
 	s := "package tcpmon\n\n"
 	s += "import \"fmt\"\n\n"
 	s += "func boolToUint32(x bool) uint32 {\n"
-	s += "\tif x == false {\n"
+	s += "\tif !x {\n"
 	s += "\t\treturn 0\n"
 	s += "\t} else {\n"
 	s += "\t\treturn 1\n"

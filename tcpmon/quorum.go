@@ -1,56 +1,39 @@
 package tcpmon
 
 import (
-	"fmt"
 	"net"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/cockroachdb/errors"
 	"github.com/hashicorp/memberlist"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
+	"github.com/spf13/viper"
 )
 
 type Quorum struct {
 	mlist *memberlist.Memberlist
 	ds    *DataStore
+	// listenAddr IpAddr
 }
 
-func NewQuorum(ds *DataStore, mconfig *MonitorConfig) *Quorum {
+func NewQuorum(ds *DataStore, monitorConfig *MonitorConfig) *Quorum {
 	q := &Quorum{
 		ds: ds,
 	}
 
+	// create memberlist
 	config := memberlist.DefaultLANConfig()
 	config.Events = q
 	config.LogOutput = NewMemberlistLogger()
-	config.BindPort = mconfig.QuorumPort
-	config.AdvertisePort = mconfig.QuorumPort
+	config.BindPort = monitorConfig.QuorumPort
+	config.AdvertisePort = monitorConfig.QuorumPort
 
 	m, err := memberlist.Create(config)
 	if err != nil {
 		log.Fatal().Err(err).Msg("create memberlist failed")
 	}
 	q.mlist = m
-
-	my := m.LocalNode()
-	log.Info().Str("hostname", my.String()).
-		Str("address", my.Address()).
-		Msg("Quorum created")
-
-	// update local meta
-	var memberInfo MemberInfo
-	ipaddr := ParseIpAddr(mconfig.HttpListen)
-	ipaddr.Address = my.Addr.String()
-	memberInfo.HttpListen = fmt.Sprintf("http://%s", ipaddr.String())
-	buf, err := proto.Marshal(&memberInfo)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Marshal member info failed")
-	}
-	my.Meta = buf
-	// err = ds.UpdateMember(my.Address(), buf)
-	// if err != nil {
-	// 	log.Fatal().Err(err).Msg("Update my member info failed")
-	// }
 
 	return q
 }
@@ -62,28 +45,60 @@ func (q *Quorum) Close() {
 	}
 }
 
+func writeConfig() {
+	err := viper.WriteConfig()
+	if err != nil {
+		log.Warn().Err(err).Msg("Write members to config failed")
+	}
+}
+
+func (q *Quorum) configMemberJoin(member string, meta string) {
+	members := viper.GetStringMapString("members")
+	_, ok := members[member]
+	if ok {
+		log.Warn().Str("member", member).Msg("Already in the quorum")
+		return
+	}
+
+	members[member] = meta
+	viper.Set("members", members)
+	writeConfig()
+}
+
+func (q *Quorum) configMemberLeave(member string) {
+	members := viper.GetStringMapString("members")
+	delete(members, member)
+	viper.Set("members", members)
+	writeConfig()
+}
+
+func (q *Quorum) configMemberUpdate(member string, meta string) {
+	members := viper.GetStringMapString("members")
+	members[member] = meta
+	viper.Set("members", members)
+	writeConfig()
+}
+
 func (q *Quorum) NotifyJoin(node *memberlist.Node) {
-	log.Info().Str("node", node.Address()).Msgf("Member joined")
-	// err := q.ds.AddMember(node.Address(), node.Meta)
-	// if err != nil {
-	// 	log.Warn().Err(err).Str("node", node.Address()).Msg("Save member failed")
-	// }
+	log.Info().Str("node", node.Address()).
+		Str("meta", string(node.Meta)).
+		Msgf("Member joined")
+	q.configMemberJoin(node.Address(), string(node.Meta))
+
 }
 
 func (q *Quorum) NotifyLeave(node *memberlist.Node) {
-	log.Info().Str("node", node.Address()).Msgf("Member left")
-	// err := q.ds.DeleteMember(node.Address())
-	// if err != nil {
-	// 	log.Warn().Err(err).Str("node", node.Address()).Msg("Save member failed")
-	// }
+	log.Info().Str("node", node.Address()).
+		Str("meta", string(node.Meta)).
+		Msgf("Member left quorum")
+	q.configMemberLeave(node.Address())
 }
 
 func (q *Quorum) NotifyUpdate(node *memberlist.Node) {
-	log.Info().Str("node", node.Address()).Msgf("Update member meta data")
-	// err := q.ds.UpdateMember(node.Address(), node.Meta)
-	// if err != nil {
-	// 	log.Warn().Err(err).Str("node", node.Address()).Msg("Update member failed")
-	// }
+	log.Info().Str("node", node.Address()).
+		Str("meta", string(node.Meta)).
+		Msgf("Update member meta data")
+	q.configMemberUpdate(node.Address(), string(node.Meta))
 }
 
 func (q *Quorum) Local() *memberlist.Node {
@@ -98,20 +113,31 @@ func (q *Quorum) Leave(timeout time.Duration) error {
 	return q.mlist.Leave(timeout)
 }
 
-func (q *Quorum) TryJoin(members []string) (int, error) {
-	return q.mlist.Join(members)
+func (q *Quorum) TryJoin(members map[string]string) (int, error) {
+	m := lo.Keys(members)
+	if len(m) > 0 {
+		return q.mlist.Join(m)
+	}
+	return 0, errors.New("members is empty")
 }
 
-func (q *Quorum) Join(members []string) {
-	for i := 0; i < 3; i++ {
+func (q *Quorum) Join(members map[string]string, retry int, delay time.Duration) {
+	if retry == 0 {
+		retry = 3
+	}
+	if delay == 0 {
+		delay = time.Second
+	}
+
+	for i := 0; i < retry; i++ {
 		_, err := q.TryJoin(members)
 		if err != nil {
-			log.Err(err).Strs("members", members).Msg("join quorum failed")
+			log.Err(err).Msg("join quorum failed")
 		} else {
-			log.Info().Strs("members", members).Msg("join quorum success")
+			log.Info().Msg("join quorum success")
 			break
 		}
-		time.Sleep(1 * time.Second)
+		time.Sleep(delay)
 	}
 }
 
@@ -119,6 +145,20 @@ func (q *Quorum) MyIP() net.IP {
 	return net.ParseIP(GetIpFromAddress(q.mlist.LocalNode().Address()))
 }
 
-func (q *Quorum) GetMemberMeta(member string) (map[string]any, error) {
-	return q.ds.GetMemberMeta(member)
+func (q *Quorum) My() *memberlist.Node {
+	return q.mlist.LocalNode()
+}
+
+func (q *Quorum) GetMemberMeta(member string) (string, error) {
+	members := viper.GetStringMapString("members")
+	if members == nil {
+		return "", errors.New("Get members failed")
+	}
+
+	m, ok := members[member]
+	if !ok {
+		return "", errors.Newf("Member %s not in the cluster", member)
+	}
+
+	return m, nil
 }

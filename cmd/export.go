@@ -110,6 +110,9 @@ var exportCmd = &cobra.Command{
 				}
 				return nil
 			})
+			if err != nil {
+				log.Err(err).Msg("Read db failed")
+			}
 		} else {
 			log.Warn().Msg("db-dir is not empty, please clear db-dir or use '--force'")
 			return
