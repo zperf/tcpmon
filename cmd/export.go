@@ -40,74 +40,73 @@ var exportCmd = &cobra.Command{
 			log.Fatal().Err(err).Msg("Check db directory failed")
 		}
 
-		if force || isEmpty {
-			db, err := badger.Open(badger.DefaultOptions(dbDir).
-				WithLogger(&tcpmon.BadgerDbLogger{}))
-			if err != nil {
-				log.Fatal().Err(err).Msg("Open db for write failed")
-			}
-			defer db.Close()
-
-			err = db.DropAll()
-			if err != nil {
-				log.Fatal().Err(err).Msg("Clear db failed")
-			}
-
-			fh, err := os.Open(backupFile)
-			if err != nil {
-				log.Fatal().Err(err).Msg("Open backup file failed")
-			}
-
-			err = db.Load(fh, 256)
-			if err != nil {
-				log.Fatal().Err(err).Str("backupFile", backupFile).Str("db", dbDir).Msg("Restore failed")
-			}
-
-			err = db.View(func(txn *badger.Txn) error {
-				opts := badger.DefaultIteratorOptions
-				it := txn.NewIterator(opts)
-				defer it.Close()
-				for it.Rewind(); it.Valid(); it.Next() {
-					item := it.Item()
-					key := string(item.Key())
-					valByte, err := item.ValueCopy(nil)
-					if err != nil {
-						log.Err(err).Str("key", key).Msg("Get value failed")
-					}
-					switch key[0:3] {
-					case "net":
-						var val tcpmon.NetstatMetric
-						err = proto.Unmarshal(valByte, &val)
-						if err != nil {
-							log.Err(err).Str("key", key).Msg("Unmarshal failed")
-						}
-						printer.PrintNetstatMetric(&val, hostname)
-					case "nic":
-						var val tcpmon.NicMetric
-						err = proto.Unmarshal(valByte, &val)
-						if err != nil {
-							log.Err(err).Str("key", key).Msg("Unmarshal failed")
-						}
-						printer.PrintNicMetric(&val, hostname)
-					case "tcp":
-						var val tcpmon.TcpMetric
-						err = proto.Unmarshal(valByte, &val)
-						if err != nil {
-							log.Err(err).Str("key", key).Msg("Unmarshal failed")
-						}
-						printer.PrintTcpMetric(&val, hostname)
-					default:
-						log.Warn().Str("key", key).Msg("wrong key format")
-					}
-				}
-				return nil
-			})
-			if err != nil {
-				log.Err(err).Msg("Read db failed")
-			}
-		} else {
+		if !force && !isEmpty {
 			log.Fatal().Msg("db is not empty, please clear db or use '-f'")
-			return
+		}
+
+		db, err := badger.Open(badger.DefaultOptions(dbDir).
+			WithLogger(&tcpmon.BadgerDbLogger{}))
+		if err != nil {
+			log.Fatal().Err(err).Msg("Open db for write failed")
+		}
+		defer db.Close()
+
+		err = db.DropAll()
+		if err != nil {
+			log.Fatal().Err(err).Msg("Clear db failed")
+		}
+
+		fh, err := os.Open(backupFile)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Open backup file failed")
+		}
+
+		err = db.Load(fh, 256)
+		if err != nil {
+			log.Fatal().Err(err).Str("backupFile", backupFile).Str("db", dbDir).Msg("Restore failed")
+		}
+
+		err = db.View(func(txn *badger.Txn) error {
+			opts := badger.DefaultIteratorOptions
+			it := txn.NewIterator(opts)
+			defer it.Close()
+			for it.Rewind(); it.Valid(); it.Next() {
+				item := it.Item()
+				key := string(item.Key())
+				valByte, err := item.ValueCopy(nil)
+				if err != nil {
+					log.Err(err).Str("key", key).Msg("Get value failed")
+				}
+				switch key[0:3] {
+				case "net":
+					var val tcpmon.NetstatMetric
+					err = proto.Unmarshal(valByte, &val)
+					if err != nil {
+						log.Err(err).Str("key", key).Msg("Unmarshal failed")
+					}
+					printer.PrintNetstatMetric(&val, hostname)
+				case "nic":
+					var val tcpmon.NicMetric
+					err = proto.Unmarshal(valByte, &val)
+					if err != nil {
+						log.Err(err).Str("key", key).Msg("Unmarshal failed")
+					}
+					printer.PrintNicMetric(&val, hostname)
+				case "tcp":
+					var val tcpmon.TcpMetric
+					err = proto.Unmarshal(valByte, &val)
+					if err != nil {
+						log.Err(err).Str("key", key).Msg("Unmarshal failed")
+					}
+					printer.PrintTcpMetric(&val, hostname)
+				default:
+					log.Warn().Str("key", key).Msg("wrong key format")
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			log.Err(err).Msg("Read db failed")
 		}
 	},
 }
