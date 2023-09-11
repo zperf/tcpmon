@@ -12,9 +12,9 @@ import (
 )
 
 type Quorum struct {
-	mlist      *memberlist.Memberlist
-	ds         *DataStore
-	listenAddr IpAddr
+	mlist *memberlist.Memberlist
+	ds    *DataStore
+	// listenAddr IpAddr
 }
 
 func NewQuorum(ds *DataStore, monitorConfig *MonitorConfig) *Quorum {
