@@ -4,3 +4,4 @@ all:
 	go install github.com/bep/punused@latest
 	go install golang.org/x/tools/gopls@latest
 	go install honnef.co/go/tools/cmd/staticcheck@latest
+	go run codegen.go
