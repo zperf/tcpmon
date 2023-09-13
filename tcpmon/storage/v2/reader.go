@@ -1,6 +1,7 @@
 package v2
 
 import (
+	"archive/tar"
 	"encoding/binary"
 	"io"
 	"path/filepath"
@@ -14,52 +15,121 @@ import (
 	"github.com/spf13/afero"
 )
 
-type DataStoreReader struct {
+type Reader struct {
 	baseDir afero.File
 	fs      afero.Fs
+	config  *ReaderConfig
 }
 
-func NewDataStoreReader(baseDir string, fs afero.Fs) (*DataStoreReader, error) {
-	if fs == nil {
-		fs = afero.NewOsFs()
-	}
+type ReaderConfig struct {
+	baseDir string
+	fs      afero.Fs
+	prefix  string
+	suffix  string
+}
 
-	fh, err := fs.Open(baseDir)
+func NewReaderConfig(baseDir string) *ReaderConfig {
+	return &ReaderConfig{
+		baseDir: baseDir,
+		fs:      afero.NewOsFs(),
+		prefix:  DataFilePrefix,
+		suffix:  "",
+	}
+}
+
+func (c *ReaderConfig) WithFs(fs afero.Fs) *ReaderConfig {
+	c.fs = fs
+	return c
+}
+
+func (c *ReaderConfig) WithPrefix(s string) *ReaderConfig {
+	c.prefix = s
+	return c
+}
+
+func (c *ReaderConfig) WithSuffix(s string) *ReaderConfig {
+	c.suffix = s
+	return c
+}
+
+func NewDataStoreReader(config *ReaderConfig) (*Reader, error) {
+	fh, err := config.fs.Open(config.baseDir)
 	if err != nil {
 		return nil, errors.Wrap(err, "open base dir failed")
 	}
 
-	r := &DataStoreReader{
+	r := &Reader{
 		baseDir: fh,
-		fs:      fs,
+		fs:      config.fs,
+		config:  config,
 	}
 	return r, nil
 }
 
-func (r *DataStoreReader) Iterate(cb func(buf []byte)) error {
-	files, err := r.baseDir.Readdirnames(-1)
-	if err != nil {
-		return errors.Wrap(err, "list files in base dir failed")
+func (r *Reader) Close() {
+	if r.baseDir != nil {
+		err := r.baseDir.Close()
+		if err != nil {
+			log.Warn().Err(err).Msg("Close base dir failed")
+		}
+	}
+}
+
+func (r *Reader) newFilter() func(f string, i int) bool {
+	if r.config.prefix != "" && r.config.suffix != "" {
+		return func(f string, i int) bool {
+			return strings.HasPrefix(f, r.config.prefix) && strings.HasSuffix(f, r.config.suffix)
+		}
 	}
 
-	files = lo.Filter(files, func(f string, i int) bool {
-		return strings.HasPrefix(f, FilePrefix)
-	})
+	if r.config.prefix != "" {
+		return func(f string, i int) bool {
+			return strings.HasPrefix(f, r.config.prefix)
+		}
+	}
+
+	if r.config.suffix != "" {
+		return func(f string, i int) bool {
+			return strings.HasPrefix(f, r.config.prefix)
+		}
+	}
+
+	return nil
+}
+
+func (r *Reader) files() ([]string, error) {
+	files, err := r.baseDir.Readdirnames(-1)
+	if err != nil {
+		return nil, errors.Wrap(err, "list files in base dir failed")
+	}
+
+	filter := r.newFilter()
+	if filter != nil {
+		files = lo.Filter(files, filter)
+	}
 
 	sort.Slice(files, func(i, j int) bool {
 		return strings.Compare(files[i], files[j]) < 0
 	})
 
+	return files, nil
+}
+
+func (r *Reader) Iterate(cb func(buf []byte)) error {
+	files, err := r.files()
+	if err != nil {
+		return err
+	}
+
 	for _, file := range files {
 		filePath := filepath.Join(r.baseDir.Name(), file)
 		log.Info().Str("file", filePath).Msg("Iterate over file")
 
-		reader, err := NewReader(filePath, r.fs)
+		reader, err := NewDataFileReader(filePath, r.fs)
 		if err != nil {
 			return err
 		}
 
-		off := 0
 		for {
 			buf, err := reader.Read()
 			if err != nil {
@@ -70,14 +140,13 @@ func (r *DataStoreReader) Iterate(cb func(buf []byte)) error {
 			}
 
 			cb(buf)
-			off += len(buf)
 		}
 	}
 
 	return nil
 }
 
-func (r *DataStoreReader) Count() (int, error) {
+func (r *Reader) Count() (int, error) {
 	count := 0
 	err := r.Iterate(func(_ []byte) {
 		count++
@@ -85,13 +154,46 @@ func (r *DataStoreReader) Count() (int, error) {
 	return count, err
 }
 
-func (r *DataStoreReader) Close() {
-	if r.baseDir != nil {
-		err := r.baseDir.Close()
+func (r *Reader) Package(writer io.Writer) error {
+	files, err := r.files()
+	if err != nil {
+		return err
+	}
+
+	t := tar.NewWriter(writer)
+	defer t.Close()
+
+	for _, file := range files {
+		filePath := filepath.Join(r.baseDir.Name(), file)
+
+		fh, err := r.fs.Open(filePath)
 		if err != nil {
-			log.Warn().Err(err).Msg("Close base dir failed")
+			return errors.Wrap(err, "open file failed")
+		}
+
+		stat, err := r.fs.Stat(filePath)
+		if err != nil {
+			return errors.Wrap(err, "stat failed")
+		}
+
+		err = t.WriteHeader(&tar.Header{
+			Name:    file,
+			Mode:    0644,
+			Size:    stat.Size(),
+			ModTime: stat.ModTime(),
+			Format:  tar.FormatPAX,
+		})
+		if err != nil {
+			return errors.Wrap(err, "write header failed")
+		}
+
+		_, err = io.Copy(t, fh)
+		if err != nil {
+			return errors.Wrap(err, "copy file failed")
 		}
 	}
+
+	return nil
 }
 
 type DataFileReader struct {
@@ -99,7 +201,7 @@ type DataFileReader struct {
 	reader io.Reader
 }
 
-func NewReader(filePath string, fs afero.Fs) (*DataFileReader, error) {
+func NewDataFileReader(filePath string, fs afero.Fs) (*DataFileReader, error) {
 	if fs == nil {
 		fs = afero.NewOsFs()
 	}
@@ -125,7 +227,6 @@ func (r *DataFileReader) Read() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Info().Uint32("size", size).Msg("Read header")
 
 	buf := make([]byte, size)
 	_, err = r.reader.Read(buf)
@@ -148,7 +249,7 @@ func (r *DataFileReader) ReadHeader() (uint32, error) {
 
 	version := binary.LittleEndian.Uint16(buf[0:2])
 	if version != Version {
-		return 0, errors.Newf("invalid version `%d` in header", version)
+		return 0, errors.Newf("invalid version 0x`%x` in header", version)
 	}
 
 	size := binary.LittleEndian.Uint32(buf[2:6])
