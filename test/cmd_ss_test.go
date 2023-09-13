@@ -5,6 +5,7 @@ import (
 	"time"
 
 	. "github.com/zperf/tcpmon/tcpmon"
+	. "github.com/zperf/tcpmon/tcpmon/tutils"
 )
 
 //func (s *CommandParserTestSuite) TestParseLongSS() {

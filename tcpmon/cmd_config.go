@@ -5,6 +5,8 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
+
+	"github.com/zperf/tcpmon/tcpmon/tutils"
 )
 
 type CmdConfig struct {
@@ -19,7 +21,7 @@ type CmdConfig struct {
 
 func FileFallback(path ...string) string {
 	for _, p := range path {
-		ok, err := FileExists(p)
+		ok, err := tutils.FileExists(p)
 		if err != nil {
 			log.Fatal().Err(err).Str("file", p).Msg("Stat file failed")
 		}

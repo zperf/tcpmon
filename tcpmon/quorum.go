@@ -9,6 +9,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
+
+	"github.com/zperf/tcpmon/tcpmon/tutils"
 )
 
 type Quorum struct {
@@ -134,7 +136,7 @@ func (q *Quorum) Join(members map[string]string, retry int, delay time.Duration)
 }
 
 func (q *Quorum) MyIP() net.IP {
-	return net.ParseIP(GetIpFromAddress(q.mlist.LocalNode().Address()))
+	return net.ParseIP(tutils.GetIpFromAddress(q.mlist.LocalNode().Address()))
 }
 
 func (q *Quorum) GetMemberMeta(member string) (string, error) {
