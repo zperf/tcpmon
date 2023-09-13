@@ -8,6 +8,8 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
+
+	"github.com/zperf/tcpmon/tcpmon/tutils"
 )
 
 func GetMember(q *Quorum) func(c *gin.Context) {
@@ -17,7 +19,7 @@ func GetMember(q *Quorum) func(c *gin.Context) {
 			addr := member.Address()
 			meta, err := q.GetMemberMeta(addr)
 			if err != nil {
-				c.AbortWithStatusJSON(http.StatusInternalServerError, ErrorJSON(err))
+				c.AbortWithStatusJSON(http.StatusInternalServerError, tutils.ErrorJSON(err))
 				return
 			}
 			members[member.Address()] = meta
@@ -44,7 +46,7 @@ func JoinCluster(q *Quorum) func(c *gin.Context) {
 
 		_, err = q.TryJoin(members)
 		if err != nil {
-			c.JSON(http.StatusOK, ErrorJSON(errors.WithStack(err)))
+			c.JSON(http.StatusOK, tutils.ErrorJSON(errors.WithStack(err)))
 			return
 		}
 
@@ -57,6 +59,6 @@ func JoinCluster(q *Quorum) func(c *gin.Context) {
 func LeaveCluster(q *Quorum) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		err := q.Leave(3 * time.Second)
-		c.JSON(http.StatusOK, ErrorJSON(err))
+		c.JSON(http.StatusOK, tutils.ErrorJSON(err))
 	}
 }

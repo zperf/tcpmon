@@ -9,6 +9,8 @@ import (
 	"github.com/go-cmd/cmd"
 	"github.com/rs/zerolog/log"
 	"github.com/umisama/go-regexpcache"
+
+	"github.com/zperf/tcpmon/tcpmon/tutils"
 )
 
 var socketStateMap map[string]SocketState
@@ -79,57 +81,57 @@ func setMetric(m *SocketMetric, field string) {
 		if q == -1 {
 			log.Fatal().Str("field", valueStr).Msg("invalid wscale")
 		}
-		m.SndWscale, _ = ParseUint32(valueStr[:q])
-		m.RcvWscale, _ = ParseUint32(valueStr[q+1:])
+		m.SndWscale, _ = tutils.ParseUint32(valueStr[:q])
+		m.RcvWscale, _ = tutils.ParseUint32(valueStr[q+1:])
 		return
 	case "rto":
-		m.Rto, _ = ParseFloat64(valueStr)
+		m.Rto, _ = tutils.ParseFloat64(valueStr)
 		return
 	case "rtt":
 		q := strings.IndexRune(valueStr, '/')
 		if q == -1 {
 			log.Fatal().Str("field", valueStr).Msg("invalid rtt/rttvar")
 		}
-		m.Rtt, _ = ParseFloat64(valueStr[:q])
-		m.Rttvar, _ = ParseFloat64(valueStr[q+1:])
+		m.Rtt, _ = tutils.ParseFloat64(valueStr[:q])
+		m.Rttvar, _ = tutils.ParseFloat64(valueStr[q+1:])
 		return
 	case "minrtt":
-		m.Minrtt, _ = ParseFloat64(valueStr)
+		m.Minrtt, _ = tutils.ParseFloat64(valueStr)
 		return
 	case "busy":
-		m.BusyMs, _ = ParseUint32(strings.TrimSuffix(valueStr, "ms"))
+		m.BusyMs, _ = tutils.ParseUint32(strings.TrimSuffix(valueStr, "ms"))
 		return
 	case "rcv_rtt":
-		m.RcvRtt, _ = ParseFloat64(valueStr)
+		m.RcvRtt, _ = tutils.ParseFloat64(valueStr)
 		return
 	case "retrans":
 		q := strings.IndexRune(valueStr, '/')
 		if q == -1 {
 			log.Fatal().Str("field", valueStr).Msg("invalid retrans")
 		}
-		m.RetransNow, _ = ParseUint32(valueStr[:q])
-		m.RetransTotal, _ = ParseUint32(valueStr[q+1:])
+		m.RetransNow, _ = tutils.ParseUint32(valueStr[:q])
+		m.RetransTotal, _ = tutils.ParseUint32(valueStr[q+1:])
 		return
 	case "rwnd_limited":
 		// these two fields(rwnd_limited and sndbuf_limited) must be in ms, check the source of iproute2
 		// https://www.mail-archive.com/netdev@vger.kernel.org/msg140890.html
-		m.RwndLimited, _ = ParseUint32(getFirstNumberFromMess(valueStr))
+		m.RwndLimited, _ = tutils.ParseUint32(getFirstNumberFromMess(valueStr))
 		return
 	case "sndbuf_limited":
-		m.SndbufLimited, _ = ParseUint32(getFirstNumberFromMess(valueStr))
+		m.SndbufLimited, _ = tutils.ParseUint32(getFirstNumberFromMess(valueStr))
 		return
 	case "ato":
-		m.Ato, _ = ParseFloat64(valueStr)
+		m.Ato, _ = tutils.ParseFloat64(valueStr)
 		return
 	case "bytes_acked":
-		m.BytesAcked, _ = ParseUint64(valueStr)
+		m.BytesAcked, _ = tutils.ParseUint64(valueStr)
 		return
 	case "bytes_received":
-		m.BytesReceived, _ = ParseUint64(valueStr)
+		m.BytesReceived, _ = tutils.ParseUint64(valueStr)
 		return
 	}
 
-	value, err := ParseUint32(valueStr)
+	value, err := tutils.ParseUint32(valueStr)
 	if err != nil {
 		log.Warn().Str("value", valueStr).Str("key", key).Err(errors.WithStack(err)).Msg("parse failed")
 		return
@@ -184,16 +186,16 @@ func parseInfos(m *SocketMetric, s string) {
 			return ',' == r
 		})
 		skmem := SocketMemoryUsage{}
-		skmem.RmemAlloc, _ = ParseUint32(strings.TrimPrefix(fields[0], "r"))
-		skmem.RcvBuf, _ = ParseUint32(strings.TrimPrefix(fields[1], "rb"))
-		skmem.WmemAlloc, _ = ParseUint32(strings.TrimPrefix(fields[2], "t"))
-		skmem.SndBuf, _ = ParseUint32(strings.TrimPrefix(fields[3], "tb"))
-		skmem.FwdAlloc, _ = ParseUint32(strings.TrimPrefix(fields[4], "f"))
-		skmem.WmemQueued, _ = ParseUint32(strings.TrimPrefix(fields[5], "w"))
-		skmem.OptMem, _ = ParseUint32(strings.TrimPrefix(fields[6], "o"))
-		skmem.BackLog, _ = ParseUint32(strings.TrimPrefix(fields[7], "bl"))
+		skmem.RmemAlloc, _ = tutils.ParseUint32(strings.TrimPrefix(fields[0], "r"))
+		skmem.RcvBuf, _ = tutils.ParseUint32(strings.TrimPrefix(fields[1], "rb"))
+		skmem.WmemAlloc, _ = tutils.ParseUint32(strings.TrimPrefix(fields[2], "t"))
+		skmem.SndBuf, _ = tutils.ParseUint32(strings.TrimPrefix(fields[3], "tb"))
+		skmem.FwdAlloc, _ = tutils.ParseUint32(strings.TrimPrefix(fields[4], "f"))
+		skmem.WmemQueued, _ = tutils.ParseUint32(strings.TrimPrefix(fields[5], "w"))
+		skmem.OptMem, _ = tutils.ParseUint32(strings.TrimPrefix(fields[6], "o"))
+		skmem.BackLog, _ = tutils.ParseUint32(strings.TrimPrefix(fields[7], "bl"))
 		if len(fields) > 8 {
-			skmem.SockDrop, _ = ParseUint32(strings.TrimPrefix(fields[8], "d"))
+			skmem.SockDrop, _ = tutils.ParseUint32(strings.TrimPrefix(fields[8], "d"))
 		}
 		m.Skmem = &skmem
 	} else if name == "timer" {
@@ -205,20 +207,20 @@ func parseInfos(m *SocketMetric, s string) {
 		if len(fields) == 3 {
 			if strings.Contains(fields[1], "min") && strings.HasSuffix(fields[1], "sec") {
 				ExpireTime := strings.Split(strings.TrimSuffix(fields[1], "sec"), "min")
-				ExpireTimeMin, _ := ParseUint64(ExpireTime[0])
-				ExpireTimeSec, _ := ParseUint64(ExpireTime[1])
+				ExpireTimeMin, _ := tutils.ParseUint64(ExpireTime[0])
+				ExpireTimeSec, _ := tutils.ParseUint64(ExpireTime[1])
 				t.ExpireTimeUs = ExpireTimeMin*60000000 + ExpireTimeSec*1000000
 			} else if strings.HasSuffix(fields[1], "min") {
-				ExpireTimeMin, _ := ParseUint64(strings.TrimSuffix(fields[1], "min"))
+				ExpireTimeMin, _ := tutils.ParseUint64(strings.TrimSuffix(fields[1], "min"))
 				t.ExpireTimeUs = ExpireTimeMin * 60000000
 			} else if strings.HasSuffix(fields[1], "sec") {
-				ExpireTimeSec, _ := ParseUint64(strings.TrimSuffix(fields[1], "sec"))
+				ExpireTimeSec, _ := tutils.ParseUint64(strings.TrimSuffix(fields[1], "sec"))
 				t.ExpireTimeUs = ExpireTimeSec * 1000000
 			} else if strings.HasSuffix(fields[1], "ms") {
-				ExpireTimeMillisecond, _ := ParseFloat64(strings.TrimSuffix(fields[1], "ms"))
+				ExpireTimeMillisecond, _ := tutils.ParseFloat64(strings.TrimSuffix(fields[1], "ms"))
 				t.ExpireTimeUs = uint64(ExpireTimeMillisecond * 1000)
 			}
-			t.Retrans, _ = ParseUint32(fields[2])
+			t.Retrans, _ = tutils.ParseUint32(fields[2])
 		}
 		m.Timers = append(m.Timers, t)
 	} else if name == "users" {
@@ -227,8 +229,8 @@ func parseInfos(m *SocketMetric, s string) {
 			p := &ProcessInfo{}
 			f := strings.Split(field, ",")
 			p.Name = strings.Trim(f[0], "\"")
-			p.Pid, _ = ParseUint32(strings.TrimPrefix(f[1], "pid="))
-			p.Fd, _ = ParseUint32(strings.TrimPrefix(f[2], "fd="))
+			p.Pid, _ = tutils.ParseUint32(strings.TrimPrefix(f[1], "pid="))
+			p.Fd, _ = tutils.ParseUint32(strings.TrimPrefix(f[2], "fd="))
 			m.Processes = append(m.Processes, p)
 		}
 	}
@@ -247,7 +249,7 @@ func ParseSSOutput(t *TcpMetric, out []string) {
 
 	s := &SocketMetric{}
 	for _, line := range out {
-		fields := strings.FieldsFunc(line, SplitSpace)
+		fields := strings.FieldsFunc(line, tutils.SplitSpace)
 
 		var exist bool
 		if len(fields) == 0 {
@@ -259,9 +261,9 @@ func ParseSSOutput(t *TcpMetric, out []string) {
 		if exist {
 			s = &SocketMetric{}
 			s.State = ToPbState(fields[0])
-			n, _ := ParseUint32(fields[1])
+			n, _ := tutils.ParseUint32(fields[1])
 			s.RecvQ = n
-			n, _ = ParseUint32(fields[2])
+			n, _ = tutils.ParseUint32(fields[2])
 			s.SendQ = n
 			s.LocalAddr = fields[3]
 			s.PeerAddr = fields[4]
@@ -304,15 +306,15 @@ func ParseSSOutput(t *TcpMetric, out []string) {
 
 						// Base in Kbps or KiBps
 						if strings.HasSuffix(field, "g") {
-							rateG, _ := ParseFloat64(strings.TrimSuffix(field, "g"))
+							rateG, _ := tutils.ParseFloat64(strings.TrimSuffix(field, "g"))
 							rate = rateG * carry * carry
 						} else if strings.HasSuffix(field, "m") {
-							rateM, _ := ParseFloat64(strings.TrimSuffix(field, "m"))
+							rateM, _ := tutils.ParseFloat64(strings.TrimSuffix(field, "m"))
 							rate = rateM * carry
 						} else if strings.HasSuffix(field, "k") {
-							rate, _ = ParseFloat64(strings.TrimSuffix(field, "k"))
+							rate, _ = tutils.ParseFloat64(strings.TrimSuffix(field, "k"))
 						} else {
-							rate, _ = ParseFloat64(field)
+							rate, _ = tutils.ParseFloat64(field)
 							rate /= carry
 						}
 						setRate(s, lastRateName, rate)

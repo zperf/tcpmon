@@ -7,6 +7,8 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/go-cmd/cmd"
+
+	"github.com/zperf/tcpmon/tcpmon/tutils"
 )
 
 func ParseIfconfigOutput(nics *NicMetric, out []string) {
@@ -19,18 +21,18 @@ func ParseIfconfigOutput(nics *NicMetric, out []string) {
 			r = &IfaceMetric{}
 			r.Name = fields[0]
 		} else if strings.Contains(line, "RX errors ") {
-			fields := strings.FieldsFunc(line, SplitSpace)
-			r.RxErrors, _ = ParseUint64(fields[2])
-			r.RxDropped, _ = ParseUint64(fields[4])
-			r.RxOverruns, _ = ParseUint64(fields[6])
-			r.RxFrame, _ = ParseUint64(fields[8])
+			fields := strings.FieldsFunc(line, tutils.SplitSpace)
+			r.RxErrors, _ = tutils.ParseUint64(fields[2])
+			r.RxDropped, _ = tutils.ParseUint64(fields[4])
+			r.RxOverruns, _ = tutils.ParseUint64(fields[6])
+			r.RxFrame, _ = tutils.ParseUint64(fields[8])
 		} else if strings.Contains(line, "TX errors ") {
-			fields := strings.FieldsFunc(line, SplitSpace)
-			r.TxErrors, _ = ParseUint64(fields[2])
-			r.TxDropped, _ = ParseUint64(fields[4])
-			r.TxOverruns, _ = ParseUint64(fields[6])
-			r.TxCarrier, _ = ParseUint64(fields[8])
-			r.TxCollisions, _ = ParseUint64(fields[10])
+			fields := strings.FieldsFunc(line, tutils.SplitSpace)
+			r.TxErrors, _ = tutils.ParseUint64(fields[2])
+			r.TxDropped, _ = tutils.ParseUint64(fields[4])
+			r.TxOverruns, _ = tutils.ParseUint64(fields[6])
+			r.TxCarrier, _ = tutils.ParseUint64(fields[8])
+			r.TxCollisions, _ = tutils.ParseUint64(fields[10])
 			nics.Ifaces = append(nics.Ifaces, r)
 		}
 	}

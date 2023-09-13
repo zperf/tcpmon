@@ -6,27 +6,32 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
-	"github.com/zperf/tcpmon/tcpmon"
+	. "github.com/zperf/tcpmon/tcpmon"
 	storagev2 "github.com/zperf/tcpmon/tcpmon/storage/v2"
+	"github.com/zperf/tcpmon/tcpmon/tutils"
 )
 
 var FlagExportFormat = exportFormatTsdb
+var FlagHostname string
 
 var exportCmd = &cobra.Command{
-	Use:   "export [BASE_DIR] [HOSTNAME]",
+	Use:   "export [BASE_DIR]",
 	Short: "export backup file to txt file",
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		baseDir := args[0]
-		hostname := args[1]
 
-		var printer tcpmon.MetricPrinter
-		switch FlagExportFormat.String() {
-		case "tsdb":
-			printer = tcpmon.TSDBMetricPrinter{}
+		if FlagHostname == "" {
+			log.Fatal().Msg("hostname is empty. Try adds `--hostname` to set")
 		}
 
-		reader, err := storagev2.NewDataStoreReader(baseDir, nil)
+		var printer MetricPrinter
+		switch FlagExportFormat.String() {
+		case "tsdb":
+			printer = TSDBMetricPrinter{}
+		}
+
+		reader, err := storagev2.NewDataStoreReader(storagev2.NewReaderConfig(baseDir))
 		if err != nil {
 			log.Fatal().Err(err).Msg("Open datastore failed")
 		}
@@ -35,19 +40,19 @@ var exportCmd = &cobra.Command{
 		err = reader.Iterate(func(buf []byte) {
 			log.Info().Int("bufLen", len(buf)).Msg("Read buffer")
 
-			var msg tcpmon.Metric
+			var msg Metric
 			err := proto.Unmarshal(buf, &msg)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Unmarshal failed")
 			}
 
 			switch m := msg.Body.(type) {
-			case *tcpmon.Metric_Tcp:
-				printer.PrintTcpMetric(m.Tcp, hostname)
-			case *tcpmon.Metric_Net:
-				printer.PrintNetstatMetric(m.Net, hostname)
-			case *tcpmon.Metric_Nic:
-				printer.PrintNicMetric(m.Nic, hostname)
+			case *Metric_Tcp:
+				printer.PrintTcpMetric(m.Tcp, FlagHostname)
+			case *Metric_Net:
+				printer.PrintNetstatMetric(m.Net, FlagHostname)
+			case *Metric_Nic:
+				printer.PrintNicMetric(m.Nic, FlagHostname)
 			}
 		})
 		if err != nil {
@@ -81,6 +86,9 @@ func (f *ExportFormat) Type() string {
 }
 
 func init() {
-	exportCmd.Flags().Var(&FlagExportFormat, "format", "export backup to txt in this format")
+	exportCmd.Flags().Var(&FlagExportFormat, "format",
+		"export backup to txt in this format")
+	exportCmd.Flags().StringVarP(&FlagHostname, "hostname", "n", tutils.Hostname(),
+		"export backup to txt in this format")
 	rootCmd.AddCommand(exportCmd)
 }
