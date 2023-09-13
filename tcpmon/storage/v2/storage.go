@@ -14,10 +14,11 @@ import (
 	"github.com/klauspost/compress/zstd"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+	"github.com/sasha-s/go-deadlock"
 	"github.com/spf13/afero"
 )
 
-const FilePrefix = "tcpmon-dataf-"
+const DataFilePrefix = "tcpmon-dataf-"
 const SealFileSuffix = ".zst"
 const Version = uint16(0xadde)
 
@@ -30,6 +31,10 @@ type DataStore struct {
 	writerFile     afero.File // current file
 	writerFilePath string     // current file path
 	writerCapacity uint32     // current file capacity
+
+	// mutex Multiple goroutines may access this datastore
+	// e.g. HTTP server, monitor write
+	mutex deadlock.Mutex
 }
 
 func ensureDir(dir string, fs afero.Fs) {
@@ -67,7 +72,7 @@ func NewDataStore(config *Config) (*DataStore, error) {
 
 	ensureDir(s.baseDir, s.fs)
 
-	err := s.NextFile()
+	err := s.doNextFile()
 	if err != nil {
 		return nil, errors.Wrap(err, "go to next file failed")
 	}
@@ -76,6 +81,12 @@ func NewDataStore(config *Config) (*DataStore, error) {
 }
 
 func (ds *DataStore) Close() error {
+	ds.mutex.Lock()
+	defer ds.mutex.Unlock()
+	return ds.doClose()
+}
+
+func (ds *DataStore) doClose() error {
 	if ds.writerFile != nil {
 		err := ds.writerFile.Sync()
 		if err != nil {
@@ -90,31 +101,17 @@ func (ds *DataStore) Close() error {
 		ds.writerCapacity = 0
 		ds.writerFilePath = ""
 	}
-
 	return nil
 }
 
-func (ds *DataStore) Seal() error {
-	lastFileName := ds.writerFilePath
-
-	err := ds.Close()
-	if err != nil {
-		return err
-	}
-
-	if lastFileName != "" {
-		err = ds.compressFile(lastFileName, lastFileName+SealFileSuffix)
-		if err != nil {
-			log.Warn().Err(err).Str("file", lastFileName).Msg("Seal failed")
-		}
-
-		ds.Reclaim()
-	}
-
-	return nil
+func (ds *DataStore) BaseDir() string {
+	return ds.baseDir
 }
 
 func (ds *DataStore) Put(value []byte) error {
+	ds.mutex.Lock()
+	defer ds.mutex.Unlock()
+
 	log.Info().Int("bufLen", len(value)).Msg("Put")
 
 	var err error
@@ -133,94 +130,13 @@ func (ds *DataStore) Put(value []byte) error {
 	ds.writerCapacity++
 
 	if ds.writerCapacity >= ds.config.MaxEntriesPerFile {
-		err = ds.NextFile()
+		err = ds.doNextFile()
 		if err != nil {
 			return errors.Wrap(err, "rotate file failed")
 		}
 	}
 
 	return nil
-}
-
-func (ds *DataStore) NextFile() error {
-	if ds.lastFileNum == 0 {
-		ds.lastFileNum = ds.GetLatestFileNo() + 1
-	}
-
-	err := ds.Seal()
-	if err != nil {
-		return errors.Wrap(err, "close current file failed")
-	}
-
-	nextFilePath := filepath.Join(ds.baseDir, fmt.Sprintf("%s%d", FilePrefix, ds.lastFileNum))
-	fh, err := ds.fs.Create(nextFilePath)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Create new file failed")
-	}
-	ds.lastFileNum++
-	log.Info().Str("nextFilePath", nextFilePath).Msg("Next file created")
-
-	ds.writerFile = fh
-	ds.writerFilePath = nextFilePath
-	ds.writerCapacity = 0
-
-	if ds.lastFileNum%ds.config.ReclaimAt == 0 {
-		ds.Reclaim()
-	}
-
-	return nil
-}
-
-func (ds *DataStore) TotalSize() (int64, []os.FileInfo, error) {
-	baseDir, err := ds.fs.Open(ds.baseDir)
-	if err != nil {
-		return -1, nil, errors.Wrap(err, "open base dir failed")
-	}
-
-	files, err := baseDir.Readdir(-1)
-	if err != nil {
-		return -1, nil, errors.Wrap(err, "list files failed")
-	}
-
-	files = lo.Filter(files, func(f os.FileInfo, index int) bool {
-		return strings.HasSuffix(f.Name(), SealFileSuffix)
-	})
-
-	return lo.SumBy(files, func(file os.FileInfo) int64 {
-		return file.Size()
-	}), files, nil
-}
-
-func (ds *DataStore) Reclaim() {
-	size, files, err := ds.TotalSize()
-	if err != nil {
-		log.Warn().Err(err).Msg("Retrieve total size failed")
-	}
-
-	if size > ds.config.MaxSize {
-		log.Info().Int64("size", size).
-			Int64("maxSize", ds.config.MaxSize).Msg("Reclaiming...")
-
-		sort.Slice(files, func(i, j int) bool {
-			return strings.Compare(files[i].Name(), files[j].Name()) < 0
-		})
-
-		i := 0
-		for size > ds.config.MaxSize {
-			i++
-			size -= files[i].Size()
-		}
-
-		toDelete := files[0:i]
-		for _, file := range toDelete {
-			filePath := filepath.Join(ds.baseDir, file.Name())
-			err = ds.fs.Remove(filePath)
-			if err != nil {
-				log.Warn().Err(err).Str("file", filePath).Msg("Delete failed")
-			}
-			log.Info().Str("file", file.Name()).Msg("Deleted")
-		}
-	}
 }
 
 func (ds *DataStore) GetLatestFileNo() uint32 {
@@ -253,6 +169,114 @@ func (ds *DataStore) GetLatestFileNo() uint32 {
 	}
 
 	return uint32(num)
+}
+
+func (ds *DataStore) TotalSize() (int64, []os.FileInfo, error) {
+	baseDir, err := ds.fs.Open(ds.baseDir)
+	if err != nil {
+		return -1, nil, errors.Wrap(err, "open base dir failed")
+	}
+
+	files, err := baseDir.Readdir(-1)
+	if err != nil {
+		return -1, nil, errors.Wrap(err, "list files failed")
+	}
+
+	files = lo.Filter(files, func(f os.FileInfo, index int) bool {
+		return strings.HasSuffix(f.Name(), SealFileSuffix)
+	})
+
+	return lo.SumBy(files, func(file os.FileInfo) int64 {
+		return file.Size()
+	}), files, nil
+}
+
+func (ds *DataStore) NextFile() error {
+	ds.mutex.Lock()
+	defer ds.mutex.Unlock()
+
+	return ds.doNextFile()
+}
+
+func (ds *DataStore) doNextFile() error {
+	if ds.lastFileNum == 0 {
+		ds.lastFileNum = ds.GetLatestFileNo() + 1
+	}
+
+	err := ds.seal()
+	if err != nil {
+		return errors.Wrap(err, "close current file failed")
+	}
+
+	nextFilePath := filepath.Join(ds.baseDir, fmt.Sprintf("%s%d", DataFilePrefix, ds.lastFileNum))
+	fh, err := ds.fs.Create(nextFilePath)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Create new file failed")
+	}
+	ds.lastFileNum++
+	log.Info().Str("nextFilePath", nextFilePath).Msg("Next file created")
+
+	ds.writerFile = fh
+	ds.writerFilePath = nextFilePath
+	ds.writerCapacity = 0
+
+	if ds.lastFileNum%ds.config.ReclaimAt == 0 {
+		ds.reclaim()
+	}
+
+	return nil
+}
+
+func (ds *DataStore) seal() error {
+	lastFileName := ds.writerFilePath
+
+	err := ds.doClose()
+	if err != nil {
+		return err
+	}
+
+	if lastFileName != "" {
+		err = ds.compressFile(lastFileName, lastFileName+SealFileSuffix)
+		if err != nil {
+			log.Warn().Err(err).Str("file", lastFileName).Msg("seal failed")
+		}
+
+		ds.reclaim()
+	}
+
+	return nil
+}
+
+func (ds *DataStore) reclaim() {
+	size, files, err := ds.TotalSize()
+	if err != nil {
+		log.Warn().Err(err).Msg("Retrieve total size failed")
+	}
+
+	if size > ds.config.MaxSize {
+		log.Info().Int64("size", size).
+			Int64("maxSize", ds.config.MaxSize).Msg("Reclaiming...")
+
+		sort.Slice(files, func(i, j int) bool {
+			return strings.Compare(files[i].Name(), files[j].Name()) < 0
+		})
+
+		i := 0
+		for size > ds.config.MaxSize {
+			i++
+			size -= files[i].Size()
+		}
+
+		toDelete := files[0:i]
+		for _, file := range toDelete {
+			filePath := filepath.Join(ds.baseDir, file.Name())
+			err = ds.fs.Remove(filePath)
+			if err != nil {
+				log.Warn().Err(err).Str("file", filePath).Msg("Delete failed")
+			}
+			log.Info().Str("file", file.Name()).Msg("Deleted")
+		}
+	}
 }
 
 func (ds *DataStore) newHeader(size int) []byte {

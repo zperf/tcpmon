@@ -8,6 +8,9 @@ import (
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
+
+	v2 "github.com/zperf/tcpmon/tcpmon/storage/v2"
+	"github.com/zperf/tcpmon/tcpmon/tutils"
 )
 
 func RegisterRoutes(router *gin.Engine, mon *Monitor) {
@@ -24,14 +27,30 @@ func GetHome(c *gin.Context) {
 }
 
 func GetBackup(mon *Monitor) func(c *gin.Context) {
-	hostname := Hostname()
-	filename := SafeFilename(fmt.Sprintf("tcpmon-dump-%s-%s.bak", hostname, mon.quorum.MyIP()))
+	hostname := tutils.Hostname()
+	filename := tutils.SafeFilename(fmt.Sprintf("tcpmon-datastore-%s-%s.tar", hostname, mon.quorum.MyIP()))
 
 	return func(c *gin.Context) {
 		c.Writer.Header().Set("Content-Type", "application/octet-stream")
 		c.Writer.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
-		// TODO
-		panic(nil)
+
+		err := mon.datastore.NextFile()
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, tutils.ErrorJSON(err))
+			return
+		}
+
+		r, err := v2.NewDataStoreReader(v2.NewReaderConfig(mon.datastore.BaseDir()).WithSuffix(v2.SealFileSuffix))
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, tutils.ErrorJSON(err))
+			return
+		}
+
+		err = r.Package(c.Writer)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, tutils.ErrorJSON(err))
+			return
+		}
 	}
 }
 
