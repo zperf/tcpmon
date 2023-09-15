@@ -32,7 +32,6 @@ func main() {
 
 import (
 	"fmt"
-	"strings"
 )
 
 func boolToUint32(x bool) uint32 {
@@ -41,12 +40,6 @@ func boolToUint32(x bool) uint32 {
 	} else {
 		return 1
 	}
-}
-
-func replaceStar(s string) string {
-	s = strings.Replace(s, ":", "_", -1)
-	s = strings.Replace(s, "*", "all", -1)
-	return s
 }
 
 type TSDBMetricPrinter struct {}
@@ -118,7 +111,7 @@ type TSDBMetricPrinter struct {}
 			if number <= 2 {
 				continue
 			}
-			s := fmt.Sprintf("\tfmt.Printf(\"%s %%d %%d type=net hostname=%%s\\n\", m.GetTimestamp(), m.Get%s(), hostname)\n", name, name)
+			s := fmt.Sprintf("\tfmt.Printf(\"net,hostname=%%s %s=%%d %%d\\n\", hostname, m.Get%s(), m.GetTimestamp())\n", name, name)
 			_, err = goFile.WriteString(s)
 			if err != nil {
 				fmt.Printf("Error writing to file: %v\n", err)
@@ -146,7 +139,7 @@ type TSDBMetricPrinter struct {}
 			if number <= 1 {
 				continue
 			}
-			s := fmt.Sprintf("\t\tfmt.Printf(\"%s %%d %%d type=nic hostname=%%s name=%%s\\n\", m.GetTimestamp(), iface.Get%s(), hostname, iface.GetName())\n", name, name)
+			s := fmt.Sprintf("\t\tfmt.Printf(\"nic,name=%%s,hostname=%%s %s=%%d %%d\\n\", iface.GetName(), hostname, iface.Get%s(), m.GetTimestamp())\n", name, name)
 			_, err = goFile.WriteString(s)
 			if err != nil {
 				fmt.Printf("Error writing to file: %v\n", err)
@@ -186,9 +179,11 @@ type TSDBMetricPrinter struct {}
 			if number == 6 || number == 7 {
 				continue
 			} else if number == 8 {
+				processMetric := []string{"Pid", "Fd"}
 				s := "\n\t\tfor _, process := range socket.GetProcesses() {\n"
-				s += "\t\t\tfmt.Printf(\"Pid %d %d type=tcp hostname=%s LocalAddr=%s PeerAddr=%s ProcessName=%s\\n\", m.GetTimestamp(), process.GetPid(), hostname, replaceStar(socket.GetLocalAddr()), replaceStar(socket.GetPeerAddr()), process.GetName())\n"
-				s += "\t\t\tfmt.Printf(\"Fd %d %d type=tcp hostname=%s LocalAddr=%s PeerAddr=%s ProcessName=%s\\n\", m.GetTimestamp(), process.GetFd(), hostname, replaceStar(socket.GetLocalAddr()), replaceStar(socket.GetPeerAddr()), process.GetName())\n"
+				for _, tmp := range processMetric {
+					s += fmt.Sprintf("\t\t\tfmt.Printf(\"tcp,LocalAddr=%%s,PeerAddr=%%s,ProcessName=%%s,hostname=%%s %s=%%d %%d\\n\", socket.GetLocalAddr(), socket.GetPeerAddr(), process.GetName(), hostname, process.Get%s(), m.GetTimestamp())\n", tmp, tmp)
+				}
 				s += "\t\t}\n\n"
 				_, err = goFile.WriteString(s)
 				if err != nil {
@@ -197,9 +192,11 @@ type TSDBMetricPrinter struct {}
 				}
 				continue
 			} else if number == 9 {
+				timerMetric := []string{"ExpireTimeUs", "Retrans"}
 				s := "\t\tfor _, timer := range socket.GetTimers() {\n"
-				s += "\t\t\tfmt.Printf(\"ExpireTimeUs %d %d type=tcp hostname=%s LocalAddr=%s PeerAddr=%s TimerName=%s\\n\", m.GetTimestamp(), timer.GetExpireTimeUs(), hostname, replaceStar(socket.GetLocalAddr()), replaceStar(socket.GetPeerAddr()), timer.GetName())\n"
-				s += "\t\t\tfmt.Printf(\"Retrans %d %d type=tcp hostname=%s LocalAddr=%s PeerAddr=%s TimerName=%s\\n\", m.GetTimestamp(), timer.GetRetrans(), hostname, replaceStar(socket.GetLocalAddr()), replaceStar(socket.GetPeerAddr()), timer.GetName())\n"
+				for _, tmp := range timerMetric {
+					s += fmt.Sprintf("\t\t\tfmt.Printf(\"tcp,LocalAddr=%%s,PeerAddr=%%s,TimerName=%%s,hostname=%%s %s=%%d %%d\\n\", socket.GetLocalAddr(), socket.GetPeerAddr(), timer.GetName(), hostname, timer.Get%s(), m.GetTimestamp())\n", tmp, tmp)
+				}
 				s += "\t\t}\n\n"
 				_, err = goFile.WriteString(s)
 				if err != nil {
@@ -208,15 +205,11 @@ type TSDBMetricPrinter struct {}
 				}
 				continue
 			} else if number == 10 {
-				s := "\t\tfmt.Printf(\"RmemAlloc %d %d type=tcp hostname=%s LocalAddr=%s PeerAddr=%s\\n\", m.GetTimestamp(), socket.GetSkmem().GetRmemAlloc(), hostname, replaceStar(socket.GetLocalAddr()), replaceStar(socket.GetPeerAddr()))\n"
-				s += "\t\tfmt.Printf(\"RcvBuf %d %d type=tcp hostname=%s LocalAddr=%s PeerAddr=%s\\n\", m.GetTimestamp(), socket.GetSkmem().GetRcvBuf(), hostname, replaceStar(socket.GetLocalAddr()), replaceStar(socket.GetPeerAddr()))\n"
-				s += "\t\tfmt.Printf(\"WmemAlloc %d %d type=tcp hostname=%s LocalAddr=%s PeerAddr=%s\\n\", m.GetTimestamp(), socket.GetSkmem().GetWmemAlloc(), hostname, replaceStar(socket.GetLocalAddr()), replaceStar(socket.GetPeerAddr()))\n"
-				s += "\t\tfmt.Printf(\"SndBuf %d %d type=tcp hostname=%s LocalAddr=%s PeerAddr=%s\\n\", m.GetTimestamp(), socket.GetSkmem().GetSndBuf(), hostname, replaceStar(socket.GetLocalAddr()), replaceStar(socket.GetPeerAddr()))\n"
-				s += "\t\tfmt.Printf(\"FwdAlloc %d %d type=tcp hostname=%s LocalAddr=%s PeerAddr=%s\\n\", m.GetTimestamp(), socket.GetSkmem().GetFwdAlloc(), hostname, replaceStar(socket.GetLocalAddr()), replaceStar(socket.GetPeerAddr()))\n"
-				s += "\t\tfmt.Printf(\"WmemQueued %d %d type=tcp hostname=%s LocalAddr=%s PeerAddr=%s\\n\", m.GetTimestamp(), socket.GetSkmem().GetWmemQueued(), hostname, replaceStar(socket.GetLocalAddr()), replaceStar(socket.GetPeerAddr()))\n"
-				s += "\t\tfmt.Printf(\"OptMem %d %d type=tcp hostname=%s LocalAddr=%s PeerAddr=%s\\n\", m.GetTimestamp(), socket.GetSkmem().GetOptMem(), hostname, replaceStar(socket.GetLocalAddr()), replaceStar(socket.GetPeerAddr()))\n"
-				s += "\t\tfmt.Printf(\"BackLog %d %d type=tcp hostname=%s LocalAddr=%s PeerAddr=%s\\n\", m.GetTimestamp(), socket.GetSkmem().GetBackLog(), hostname, replaceStar(socket.GetLocalAddr()), replaceStar(socket.GetPeerAddr()))\n"
-				s += "\t\tfmt.Printf(\"SockDrop %d %d type=tcp hostname=%s LocalAddr=%s PeerAddr=%s\\n\", m.GetTimestamp(), socket.GetSkmem().GetSockDrop(), hostname, replaceStar(socket.GetLocalAddr()), replaceStar(socket.GetPeerAddr()))\n"
+				skmemMetric := []string{"RmemAlloc", "RcvBuf", "WmemAlloc", "SndBuf", "FwdAlloc", "WmemQueued", "OptMem", "BackLog", "SockDrop"}
+				s := ""
+				for _, tmp := range skmemMetric {
+					s += fmt.Sprintf("\t\tfmt.Printf(\"tcp,LocalAddr=%%s,PeerAddr=%%s,hostname=%%s %s=%%d %%d\\n\", socket.GetLocalAddr(), socket.GetPeerAddr(), hostname, socket.GetSkmem().Get%s(), m.GetTimestamp())\n", tmp, tmp)
+				}
 				s += "\n"
 				_, err = goFile.WriteString(s)
 				if err != nil {
@@ -230,11 +223,11 @@ type TSDBMetricPrinter struct {}
 			}
 			var s string
 			if dataType[0:4] == "uint" || dataType == "SocketState" {
-				s = fmt.Sprintf("\t\tfmt.Printf(\"%s %%d %%d type=tcp hostname=%%s LocalAddr=%%s PeerAddr=%%s\\n\", m.GetTimestamp(), socket.Get%s(), hostname, replaceStar(socket.GetLocalAddr()), replaceStar(socket.GetPeerAddr()))\n", name, name)
+				s = fmt.Sprintf("\t\tfmt.Printf(\"tcp,LocalAddr=%%s,PeerAddr=%%s,hostname=%%s %s=%%d %%d\\n\", socket.GetLocalAddr(), socket.GetPeerAddr(), hostname, socket.Get%s(), m.GetTimestamp())\n", name, name)
 			} else if dataType == "double" {
-				s = fmt.Sprintf("\t\tfmt.Printf(\"%s %%d %%f type=tcp hostname=%%s LocalAddr=%%s PeerAddr=%%s\\n\", m.GetTimestamp(), socket.Get%s(), hostname, replaceStar(socket.GetLocalAddr()), replaceStar(socket.GetPeerAddr()))\n", name, name)
+				s = fmt.Sprintf("\t\tfmt.Printf(\"tcp,LocalAddr=%%s,PeerAddr=%%s,hostname=%%s %s=%%f %%d\\n\", socket.GetLocalAddr(), socket.GetPeerAddr(), hostname, socket.Get%s(), m.GetTimestamp())\n", name, name)
 			} else {
-				s = fmt.Sprintf("\t\tfmt.Printf(\"%s %%d %%d type=tcp hostname=%%s LocalAddr=%%s PeerAddr=%%s\\n\", m.GetTimestamp(), boolToUint32(socket.Get%s()), hostname, replaceStar(socket.GetLocalAddr()), replaceStar(socket.GetPeerAddr()))\n", name, name)
+				s = fmt.Sprintf("\t\tfmt.Printf(\"tcp,LocalAddr=%%s,PeerAddr=%%s,hostname=%%s %s=%%d %%d\\n\", socket.GetLocalAddr(), socket.GetPeerAddr(), hostname, boolToUint32(socket.Get%s()), m.GetTimestamp())\n", name, name)
 			}
 			_, err = goFile.WriteString(s)
 			if err != nil {
