@@ -6,4 +6,5 @@ all:
 	go install honnef.co/go/tools/cmd/staticcheck@latest
 	go install github.com/go-delve/delve/cmd/dlv@latest
 	go install github.com/chzchzchz/goword@latest
+	go install github.com/gogo/protobuf/protoc-gen-gogofaster@latest
 	go run codegen.go
