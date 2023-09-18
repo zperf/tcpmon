@@ -112,8 +112,6 @@ func (ds *DataStore) Put(value []byte) error {
 	ds.mutex.Lock()
 	defer ds.mutex.Unlock()
 
-	log.Info().Int("bufLen", len(value)).Msg("Put")
-
 	var err error
 	header := ds.newHeader(len(value))
 
