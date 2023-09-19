@@ -152,6 +152,10 @@ func (ds *DataStore) GetLatestFileNo() uint32 {
 		return 0
 	}
 
+	fileNames = lo.Map(fileNames, func(f string, i int) string {
+		return strings.TrimSuffix(f, SealFileSuffix)
+	})
+
 	sort.Strings(fileNames)
 	lastFile := fileNames[len(fileNames)-1]
 

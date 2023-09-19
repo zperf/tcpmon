@@ -85,6 +85,25 @@ func (suite *StorageV2TestSuite) TestRotateFile() {
 	suite.Require().Equal(toWrite, count)
 }
 
+func (suite *StorageV2TestSuite) TestGetLastFileNo() {
+	_, err := suite.fs.Create("tcpmon-dataf-1")
+	suite.Require().NoError(err)
+	_, err = suite.fs.Create("tcpmon-dataf-1.zst")
+	suite.Require().NoError(err)
+
+	cfg := v2.NewConfig(suite.baseDir).
+		WithFs(suite.fs).
+		WithMaxSize(10 * (1 << 20)).
+		WithMaxEntriesPerFile(3)
+
+	ds, err := v2.NewDataStore(cfg)
+	suite.Require().NoError(err)
+	defer ds.Close()
+
+	last := ds.GetLatestFileNo()
+	suite.Require().Equal(uint32(1), last)
+}
+
 func randBuf(size int) []byte {
 	buf := make([]byte, size)
 	_, err := rand.Read(buf)
