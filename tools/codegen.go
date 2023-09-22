@@ -218,16 +218,15 @@ type TSDBMetricPrinter struct {}
 				}
 				continue
 			}
-			if dataType != "bool" && dataType != "double" && dataType[0:4] != "uint" && dataType != "SocketState" {
-				panic("Wrong data type")
-			}
 			var s string
-			if dataType[0:4] == "uint" || dataType == "SocketState" {
+			if dataType[0:3] == "int" || dataType[0:4] == "uint" || dataType == "SocketState" {
 				s = fmt.Sprintf("\t\tfmt.Printf(\"tcp,LocalAddr=%%s,PeerAddr=%%s,hostname=%%s %s=%%d %%d\\n\", socket.GetLocalAddr(), socket.GetPeerAddr(), hostname, socket.Get%s(), m.GetTimestamp())\n", name, name)
 			} else if dataType == "double" {
 				s = fmt.Sprintf("\t\tfmt.Printf(\"tcp,LocalAddr=%%s,PeerAddr=%%s,hostname=%%s %s=%%f %%d\\n\", socket.GetLocalAddr(), socket.GetPeerAddr(), hostname, socket.Get%s(), m.GetTimestamp())\n", name, name)
-			} else {
+			} else if dataType == "bool" {
 				s = fmt.Sprintf("\t\tfmt.Printf(\"tcp,LocalAddr=%%s,PeerAddr=%%s,hostname=%%s %s=%%d %%d\\n\", socket.GetLocalAddr(), socket.GetPeerAddr(), hostname, boolToUint32(socket.Get%s()), m.GetTimestamp())\n", name, name)
+			} else {
+				panic("Wrong data type")
 			}
 			_, err = goFile.WriteString(s)
 			if err != nil {
