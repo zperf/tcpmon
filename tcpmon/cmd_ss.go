@@ -261,9 +261,9 @@ func ParseSSOutput(t *TcpMetric, out []string) {
 		if exist {
 			s = &SocketMetric{}
 			s.State = ToPbState(fields[0])
-			n, _ := tutils.ParseUint32(fields[1])
-			s.RecvQ = n
-			n, _ = tutils.ParseUint32(fields[2])
+			m, _ := tutils.ParseUint32(fields[1])
+			s.RecvQ = m
+			n, _ := tutils.ParseInt64(fields[2])
 			s.SendQ = n
 			s.LocalAddr = fields[3]
 			s.PeerAddr = fields[4]

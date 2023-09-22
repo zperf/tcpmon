@@ -19,6 +19,15 @@ func ParseUint32(s string) (uint32, error) {
 	return uint32(val), nil
 }
 
+func ParseInt64(s string) (int64, error) {
+	val, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		log.Warn().Err(errors.WithStack(err)).Msg("Parse failed")
+		return 0, err
+	}
+	return val, nil
+}
+
 func ParseUint64(s string) (uint64, error) {
 	val, err := strconv.ParseUint(s, 10, 64)
 	if err != nil {

@@ -59,7 +59,7 @@ message ProcessInfo {
 message SocketMetric {
   SocketState state = 3;
   uint32 recv_q = 4;
-  uint32 send_q = 5;
+  int64 send_q = 5;
   string local_addr = 6;
   string peer_addr = 7;
 
