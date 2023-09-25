@@ -177,15 +177,15 @@ func (ds *DataStore) GetLatestFileNo() uint32 {
 	return getFileNo(lastFile)
 }
 
-func (ds *DataStore) TotalSize() (int64, []os.FileInfo, error) {
+func (ds *DataStore) TotalSize() (int64, error) {
 	baseDir, err := ds.fs.Open(ds.baseDir)
 	if err != nil {
-		return -1, nil, errors.Wrap(err, "open base dir failed")
+		return -1, errors.Wrap(err, "open base dir failed")
 	}
 
 	files, err := baseDir.Readdir(-1)
 	if err != nil {
-		return -1, nil, errors.Wrap(err, "list files failed")
+		return -1, errors.Wrap(err, "list files failed")
 	}
 
 	files = lo.Filter(files, func(f os.FileInfo, index int) bool {
@@ -194,7 +194,7 @@ func (ds *DataStore) TotalSize() (int64, []os.FileInfo, error) {
 
 	return lo.SumBy(files, func(file os.FileInfo) int64 {
 		return file.Size()
-	}), files, nil
+	}), nil
 }
 
 func (ds *DataStore) NextFile() error {
@@ -253,8 +253,34 @@ func (ds *DataStore) seal() error {
 	return nil
 }
 
+func (ds *DataStore) getDataFiles(suffix string) ([]string, error) {
+	baseDir, err := ds.fs.Open(ds.baseDir)
+	if err != nil {
+		return nil, errors.Wrap(err, "open base dir failed")
+	}
+
+	files, err := baseDir.Readdir(-1)
+	if err != nil {
+		return nil, errors.Wrap(err, "list files failed")
+	}
+
+	files = lo.Filter(files, func(f os.FileInfo, i int) bool {
+		return strings.HasPrefix(f.Name(), DataFilePrefix)
+	})
+
+	if suffix != "" {
+		files = lo.Filter(files, func(f os.FileInfo, i int) bool {
+			return strings.HasSuffix(f.Name(), suffix)
+		})
+	}
+
+	return lo.Map(files, func(f os.FileInfo, i int) string {
+		return filepath.Join(ds.baseDir, f.Name())
+	}), nil
+}
+
 func (ds *DataStore) reclaim() {
-	size, files, err := ds.TotalSize()
+	size, err := ds.TotalSize()
 	if err != nil {
 		log.Warn().Err(err).Msg("Retrieve total size failed")
 	}
@@ -263,24 +289,52 @@ func (ds *DataStore) reclaim() {
 		log.Info().Int64("size", size).
 			Int64("maxSize", ds.config.MaxSize).Msg("Reclaiming...")
 
+		// compress all data files
+		dataFiles, err := ds.getDataFiles("")
+		if err != nil {
+			log.Fatal().Err(err).Msg("List data files failed")
+		}
+		rawFiles := lo.Filter(dataFiles, func(f string, i int) bool {
+			return !strings.HasSuffix(f, SealFileSuffix)
+		})
+
+		for _, f := range rawFiles {
+			err := ds.compressFile(f, f+SealFileSuffix)
+			if err != nil {
+				log.Warn().Err(err).Msg("Compress all failed")
+			}
+		}
+
+		files, err := ds.getDataFiles(SealFileSuffix)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Get files failed")
+		}
+
 		sort.Slice(files, func(i, j int) bool {
-			return getFileNo(files[i].Name()) < getFileNo(files[j].Name())
+			return getFileNo(files[i]) < getFileNo(files[j])
+		})
+
+		fileSizes := lo.Map(files, func(f string, i int) int64 {
+			info, err := os.Stat(f)
+			if err != nil {
+				log.Fatal().Err(err).Str("file", f).Msg("stat failed")
+			}
+			return info.Size()
 		})
 
 		i := 0
 		for size > ds.config.MaxSize {
 			i++
-			size -= files[i].Size()
+			size -= fileSizes[i]
 		}
 
 		toDelete := files[0:i]
 		for _, file := range toDelete {
-			filePath := filepath.Join(ds.baseDir, file.Name())
-			err = ds.fs.Remove(filePath)
+			err = ds.fs.Remove(file)
 			if err != nil {
-				log.Warn().Err(err).Str("file", filePath).Msg("Delete failed")
+				log.Warn().Err(err).Str("file", file).Msg("Delete failed")
 			}
-			log.Info().Str("file", file.Name()).Msg("Deleted")
+			log.Info().Str("file", file).Msg("Deleted")
 		}
 	}
 }
