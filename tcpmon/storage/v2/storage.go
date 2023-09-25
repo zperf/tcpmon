@@ -137,6 +137,21 @@ func (ds *DataStore) Put(value []byte) error {
 	return nil
 }
 
+func getFileNo(fileName string) uint32 {
+	p := strings.LastIndex(fileName, "-")
+	if p == -1 {
+		log.Fatal().Str("file", fileName).Msg("Invalid file name. Maybe it shouldn't be here")
+	}
+
+	numS := fileName[p+1:]
+	num, err := strconv.ParseUint(numS, 10, 32)
+	if err != nil {
+		log.Fatal().Err(err).Str("num", numS).Msg("Invalid seq number in the file name")
+	}
+
+	return uint32(num)
+}
+
 func (ds *DataStore) GetLatestFileNo() uint32 {
 	baseDir, err := ds.fs.Open(ds.baseDir)
 	if err != nil {
@@ -159,18 +174,7 @@ func (ds *DataStore) GetLatestFileNo() uint32 {
 	sort.Strings(fileNames)
 	lastFile := fileNames[len(fileNames)-1]
 
-	p := strings.LastIndex(lastFile, "-")
-	if p == -1 {
-		log.Fatal().Str("file", lastFile).Msg("Invalid file name. Maybe it shouldn't be here")
-	}
-
-	numS := lastFile[p+1:]
-	num, err := strconv.ParseUint(numS, 10, 32)
-	if err != nil {
-		log.Fatal().Err(err).Str("num", numS).Msg("Invalid seq number in the file name")
-	}
-
-	return uint32(num)
+	return getFileNo(lastFile)
 }
 
 func (ds *DataStore) TotalSize() (int64, []os.FileInfo, error) {
@@ -260,7 +264,7 @@ func (ds *DataStore) reclaim() {
 			Int64("maxSize", ds.config.MaxSize).Msg("Reclaiming...")
 
 		sort.Slice(files, func(i, j int) bool {
-			return strings.Compare(files[i].Name(), files[j].Name()) < 0
+			return getFileNo(files[i].Name()) < getFileNo(files[j].Name())
 		})
 
 		i := 0
