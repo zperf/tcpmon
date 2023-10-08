@@ -138,6 +138,8 @@ func (ds *DataStore) Put(value []byte) error {
 }
 
 func getFileNo(fileName string) uint32 {
+	fileName = strings.TrimSuffix(fileName, SealFileSuffix)
+
 	p := strings.LastIndex(fileName, "-")
 	if p == -1 {
 		log.Fatal().Str("file", fileName).Msg("Invalid file name. Maybe it shouldn't be here")
