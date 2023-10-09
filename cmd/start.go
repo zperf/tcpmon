@@ -11,8 +11,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/zperf/tcpmon/tcpmon"
+	"github.com/zperf/tcpmon/tcpmon/server"
 	storagev2 "github.com/zperf/tcpmon/tcpmon/storage/v2"
+	"github.com/zperf/tcpmon/tcpmon/tutils"
 )
 
 var startCmd = &cobra.Command{
@@ -21,7 +22,7 @@ var startCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		datastoreConfig := storagev2.NewConfig(viper.GetString("db"))
 
-		m, err := tcpmon.New(tcpmon.MonitorConfig{
+		m, err := server.New(server.MonitorConfig{
 			CollectInterval: viper.GetDuration("collect-interval"),
 			HttpListen:      viper.GetString("listen"),
 			QuorumPort:      viper.GetInt("quorum-port"),
@@ -79,7 +80,7 @@ func init() {
 	startCmd.PersistentFlags().Uint32("db-max-size", 2000000, "Maximum number of records in the database")
 	startCmd.PersistentFlags().Duration("db-write-interval", 60*time.Second, "Write interval")
 
-	fatalIf(viper.BindPFlags(startCmd.PersistentFlags()))
+	tutils.FatalIf(viper.BindPFlags(startCmd.PersistentFlags()))
 	rootCmd.AddCommand(startCmd)
 	startCmd.AddCommand(startTestCmd)
 }

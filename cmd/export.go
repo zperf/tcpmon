@@ -1,34 +1,45 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/cockroachdb/errors"
 	"github.com/gogo/protobuf/proto"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
-	. "github.com/zperf/tcpmon/tcpmon"
+	"github.com/zperf/tcpmon/tcpmon/export/tsdb"
 	storagev2 "github.com/zperf/tcpmon/tcpmon/storage/v2"
+	"github.com/zperf/tcpmon/tcpmon/tproto"
 	"github.com/zperf/tcpmon/tcpmon/tutils"
 )
 
 var FlagExportFormat = exportFormatTsdb
 var FlagHostname string
+var FlagOutput string
 
 var exportCmd = &cobra.Command{
-	Use:   "export [BASE_DIR]",
-	Short: "export backup file to txt file",
+	Use:   "export [-o output] [-h hostname] BASE_DIR",
+	Short: "export a backup to influxdb line protocol file",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		baseDir := args[0]
 
-		if FlagHostname == "" {
-			log.Fatal().Msg("hostname is empty. Try adds `--hostname` to set")
+		writer := os.Stdout
+		if FlagOutput != "-" {
+			w, err := os.OpenFile(FlagOutput, os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				log.Fatal().Err(err).Msg("Open file for output writing failed")
+			}
+			writer = w
 		}
 
-		var printer MetricPrinter
+		var exporter *tsdb.Exporter
 		switch FlagExportFormat.String() {
 		case "tsdb":
-			printer = TSDBMetricPrinter{}
+			exporter = tsdb.New(FlagHostname, writer)
+		default:
+			log.Fatal().Str("format", FlagExportFormat.String()).Msg("")
 		}
 
 		reader, err := storagev2.NewDataStoreReader(storagev2.NewReaderConfig(baseDir))
@@ -38,25 +49,16 @@ var exportCmd = &cobra.Command{
 		defer reader.Close()
 
 		err = reader.Iterate(func(buf []byte) {
-			log.Info().Int("bufLen", len(buf)).Msg("Read buffer")
-
-			var msg Metric
-			err := proto.Unmarshal(buf, &msg)
+			var m tproto.Metric
+			err := proto.Unmarshal(buf, &m)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Unmarshal failed")
 			}
 
-			switch m := msg.Body.(type) {
-			case *Metric_Tcp:
-				printer.PrintTcpMetric(m.Tcp, FlagHostname)
-			case *Metric_Net:
-				printer.PrintNetstatMetric(m.Net, FlagHostname)
-			case *Metric_Nic:
-				printer.PrintNicMetric(m.Nic, FlagHostname)
-			}
+			exporter.ExportMetric(&m)
 		})
 		if err != nil {
-			log.Err(err).Msg("Read db failed")
+			log.Fatal().Err(err).Msg("Read db failed")
 		}
 	},
 }
@@ -90,5 +92,7 @@ func init() {
 		"export backup to txt in this format")
 	exportCmd.Flags().StringVarP(&FlagHostname, "hostname", "n", tutils.Hostname(),
 		"export backup to txt in this format")
+	exportCmd.Flags().StringVarP(&FlagOutput, "output", "o", "-",
+		"Output to file")
 	rootCmd.AddCommand(exportCmd)
 }

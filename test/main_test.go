@@ -6,11 +6,11 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/zperf/tcpmon/tcpmon"
+	"github.com/zperf/tcpmon/logging"
 )
 
 func TestMain(m *testing.M) {
-	tcpmon.InitLogger(&tcpmon.LogConfig{
+	logging.InitLogger(&logging.LogConfig{
 		ConsoleLoggingEnabled: true,
 		FileLoggingEnabled:    false,
 		Level:                 zerolog.InfoLevel,

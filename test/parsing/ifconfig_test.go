@@ -1,13 +1,14 @@
-package test
+package parsing
 
 import (
 	"strings"
 	"time"
 
-	. "github.com/zperf/tcpmon/tcpmon"
+	. "github.com/zperf/tcpmon/tcpmon/parsing"
+	. "github.com/zperf/tcpmon/tcpmon/tproto"
 )
 
-func (s *CommandParserTestSuite) TestParseIfconfig() {
+func (s *ParsingTestSuite) TestParseIfconfig() {
 	assert := s.Assert()
 
 	out := `docker0: flags=4099<UP,BROADCAST,MULTICAST>  mtu 1500

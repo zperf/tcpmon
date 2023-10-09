@@ -1,4 +1,4 @@
-package tcpmon
+package server
 
 import (
 	"fmt"

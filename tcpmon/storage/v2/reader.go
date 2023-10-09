@@ -109,7 +109,7 @@ func (r *Reader) files() ([]string, error) {
 	}
 
 	sort.Slice(files, func(i, j int) bool {
-		return strings.Compare(files[i], files[j]) < 0
+		return getFileNo(files[i]) < getFileNo(files[j])
 	})
 
 	return files, nil

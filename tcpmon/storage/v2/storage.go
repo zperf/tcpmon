@@ -160,21 +160,23 @@ func (ds *DataStore) GetLatestFileNo() uint32 {
 		log.Fatal().Err(err).Msg("Open base dir failed")
 	}
 
-	fileNames, err := baseDir.Readdirnames(-1)
+	files, err := baseDir.Readdirnames(-1)
 	if err != nil {
 		log.Fatal().Err(err).Msg("List files in base dir failed")
 	}
 
-	if len(fileNames) == 0 {
+	if len(files) == 0 {
 		return 0
 	}
 
-	fileNames = lo.Map(fileNames, func(f string, i int) string {
+	files = lo.Map(files, func(f string, i int) string {
 		return strings.TrimSuffix(f, SealFileSuffix)
 	})
 
-	sort.Strings(fileNames)
-	lastFile := fileNames[len(fileNames)-1]
+	sort.Slice(files, func(i, j int) bool {
+		return getFileNo(files[i]) < getFileNo(files[j])
+	})
+	lastFile := files[len(files)-1]
 
 	return getFileNo(lastFile)
 }
@@ -191,7 +193,7 @@ func (ds *DataStore) TotalSize() (int64, error) {
 	}
 
 	files = lo.Filter(files, func(f os.FileInfo, index int) bool {
-		return strings.HasSuffix(f.Name(), SealFileSuffix)
+		return strings.HasPrefix(f.Name(), DataFilePrefix)
 	})
 
 	return lo.SumBy(files, func(file os.FileInfo) int64 {
@@ -228,9 +230,7 @@ func (ds *DataStore) doNextFile() error {
 	ds.writerFilePath = nextFilePath
 	ds.writerCapacity = 0
 
-	if ds.lastFileNum%ds.config.ReclaimAt == 0 {
-		ds.reclaim()
-	}
+	ds.reclaim()
 
 	return nil
 }
@@ -301,6 +301,10 @@ func (ds *DataStore) reclaim() {
 		})
 
 		for _, f := range rawFiles {
+			if f == ds.writerFilePath {
+				continue
+			}
+
 			err := ds.compressFile(f, f+SealFileSuffix)
 			if err != nil {
 				log.Warn().Err(err).Msg("Compress all failed")
@@ -325,9 +329,9 @@ func (ds *DataStore) reclaim() {
 		})
 
 		i := 0
-		for size > ds.config.MaxSize {
-			i++
+		for i < len(fileSizes) && size > ds.config.MaxSize {
 			size -= fileSizes[i]
+			i++
 		}
 
 		toDelete := files[0:i]
@@ -349,9 +353,6 @@ func (ds *DataStore) newHeader(size int) []byte {
 }
 
 func (ds *DataStore) compressFile(src string, dst string) error {
-	log.Info().Str("src", src).Msg("Compressing")
-	defer log.Info().Str("dst", dst).Msg("Compressed")
-
 	in, err := ds.fs.Open(src)
 	if err != nil {
 		return errors.Wrap(err, "open input file failed")
@@ -382,6 +383,7 @@ func (ds *DataStore) compressFile(src string, dst string) error {
 		return errors.Wrap(err, "delete input file failed")
 	}
 
+	log.Info().Str("dst", dst).Msg("Compressed")
 	return nil
 }
 

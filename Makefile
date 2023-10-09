@@ -19,7 +19,9 @@ release: proto
 
 .PHONY: proto
 proto:
-	protoc -Iproto --gogofaster_out=tcpmon/ tcpmon.proto
+	mkdir -p tcpmon/tproto
+	protoc -Iproto --gogofaster_out=tcpmon/tproto tcpmon.proto
+	sed -i 's/package tcpmon/package tproto/g' tcpmon/tproto/tcpmon.pb.go
 
 .PHONY: check
 check: build

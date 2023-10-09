@@ -7,16 +7,14 @@ type Config struct {
 	Fs                afero.Fs
 	MaxSize           int64
 	MaxEntriesPerFile uint32
-	ReclaimAt         uint32
 }
 
 func NewConfig(baseDir string) *Config {
 	return &Config{
 		BaseDir:           baseDir,
 		Fs:                afero.NewOsFs(),
-		MaxSize:           500 * (1 << 20),
-		MaxEntriesPerFile: 10000,
-		ReclaimAt:         3,
+		MaxSize:           100 * (1 << 20),
+		MaxEntriesPerFile: 500,
 	}
 }
 
@@ -34,11 +32,5 @@ func (c *Config) WithMaxSize(size int64) *Config {
 // WithMaxEntriesPerFile set the max entries count per file
 func (c *Config) WithMaxEntriesPerFile(entries uint32) *Config {
 	c.MaxEntriesPerFile = entries
-	return c
-}
-
-// WithReclaimAt set the reclaiming period during file creation
-func (c *Config) WithReclaimAt(n uint32) *Config {
-	c.ReclaimAt = n
 	return c
 }

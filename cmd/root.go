@@ -11,7 +11,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/zperf/tcpmon/tcpmon"
+	"github.com/zperf/tcpmon/logging"
+	"github.com/zperf/tcpmon/tcpmon/tutils"
 )
 
 var rootCmd = &cobra.Command{
@@ -51,7 +52,7 @@ func Execute(cmdline string) {
 	// init logger
 	level, _ := zerolog.ParseLevel(viper.GetString("log-level"))
 	disableConsoleLog := viper.GetBool("disable-console")
-	logConfig := &tcpmon.LogConfig{
+	logConfig := &logging.LogConfig{
 		Level:                 level,
 		FileLoggingEnabled:    true,
 		ConsoleLoggingEnabled: !disableConsoleLog,
@@ -60,7 +61,7 @@ func Execute(cmdline string) {
 		MaxSize:               viper.GetInt("log-max-size"),
 		MaxBackups:            viper.GetInt("log-max-count"),
 	}
-	tcpmon.InitLogger(logConfig)
+	logging.InitLogger(logConfig)
 	if strings.HasPrefix(cmdline, "start") {
 		log.Info().Str("configFile", viper.ConfigFileUsed()).
 			Str("logDir", viper.GetString("log-dir")).
@@ -86,7 +87,7 @@ func init() {
 	rootCmd.PersistentFlags().String("log-filename", "tcpmon.log", "The file name of logs")
 	rootCmd.PersistentFlags().Int("log-max-size", 10, "Maximum size of each log file")
 	rootCmd.PersistentFlags().Int("log-max-count", 5, "Maximum log files to keep")
-	fatalIf(viper.BindPFlags(rootCmd.PersistentFlags()))
+	tutils.FatalIf(viper.BindPFlags(rootCmd.PersistentFlags()))
 }
 
 func writeDefaultConfig() error {

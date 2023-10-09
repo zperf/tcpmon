@@ -1,4 +1,4 @@
-package tcpmon
+package server
 
 import (
 	"context"
@@ -13,10 +13,12 @@ import (
 )
 
 type Monitor struct {
-	config     MonitorConfig
-	sockMon    *SocketMonitor
-	ifaceMon   *NicMonitor
-	netstatMon *NetstatMonitor
+	config MonitorConfig
+
+	socketMonitor *SocketMonitor
+	nicMonitor    *NicMonitor
+	netMonitor    *NetstatMonitor
+
 	datastore  *storagev2.DataStore
 	httpServer *http.Server
 	quorum     *Quorum
@@ -35,25 +37,25 @@ func New(config MonitorConfig) (*Monitor, error) {
 		return nil, err
 	}
 
-	cmdConfig := NewCmdConfig()
+	monitorConfig := NewCmdConfig()
 
 	return &Monitor{
-		config:     config,
-		datastore:  ds,
-		quorum:     NewQuorum(&config),
-		sockMon:    &SocketMonitor{cmdConfig},
-		ifaceMon:   &NicMonitor{cmdConfig},
-		netstatMon: &NetstatMonitor{cmdConfig},
+		config:        config,
+		datastore:     ds,
+		quorum:        NewQuorum(&config),
+		socketMonitor: &SocketMonitor{monitorConfig},
+		nicMonitor:    &NicMonitor{monitorConfig},
+		netMonitor:    &NetstatMonitor{monitorConfig},
 	}, nil
 }
 
-func (m *Monitor) Collect(now time.Time, tx chan<- *storagev2.MetricContext) {
+func (m *Monitor) Collect(now time.Time, tx chan<- []byte) {
 	var wg sync.WaitGroup
 	wg.Add(3)
 
 	go func() {
 		defer wg.Done()
-		req, err := m.sockMon.Collect(now)
+		req, err := m.socketMonitor.Collect(now)
 		if err != nil {
 			log.Warn().Err(err).Msg("collect socket metrics failed")
 			return
@@ -63,7 +65,7 @@ func (m *Monitor) Collect(now time.Time, tx chan<- *storagev2.MetricContext) {
 
 	go func() {
 		defer wg.Done()
-		req, err := m.ifaceMon.Collect(now)
+		req, err := m.nicMonitor.Collect(now)
 		if err != nil {
 			log.Warn().Err(err).Msg("collect nic metrics failed")
 			return
@@ -73,7 +75,7 @@ func (m *Monitor) Collect(now time.Time, tx chan<- *storagev2.MetricContext) {
 
 	go func() {
 		defer wg.Done()
-		req, err := m.netstatMon.Collect(now)
+		req, err := m.netMonitor.Collect(now)
 		if err != nil {
 			log.Warn().Err(err).Msg("collect net metrics failed")
 			return
@@ -97,13 +99,13 @@ func (m *Monitor) Run(ctx context.Context) error {
 		}
 	}
 
-	tx := make(chan *storagev2.MetricContext, 256)
+	tx := make(chan []byte, 256)
 
 	go func() {
 		for {
 			select {
 			case c := <-tx:
-				err := m.datastore.Put(c.Value)
+				err := m.datastore.Put(c)
 				if err != nil {
 					log.Fatal().Err(err).Msg("Write failed")
 				}

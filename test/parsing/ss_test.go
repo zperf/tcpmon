@@ -1,28 +1,15 @@
-package test
+package parsing
 
 import (
 	"strings"
 	"time"
 
-	. "github.com/zperf/tcpmon/tcpmon"
+	. "github.com/zperf/tcpmon/tcpmon/parsing"
+	. "github.com/zperf/tcpmon/tcpmon/tproto"
 	. "github.com/zperf/tcpmon/tcpmon/tutils"
 )
 
-//func (s *CommandParserTestSuite) TestParseLongSS() {
-//	assert := s.Assert()
-//
-//	lines := make([]string, 0)
-//	fh, err := os.Open("ss.txt")
-//	// assert.req
-//	// TODO
-//
-//	var t TcpMetric
-//	t.Timestamp = time.Now().UnixMilli()
-//	t.Type = MetricType_TCP
-//	ParseSSOutput(&t, lines)
-//}
-
-func (s *CommandParserTestSuite) TestParseSS() {
+func (s *ParsingTestSuite) TestParseSS() {
 	assert := s.Assert()
 
 	out := `State      Recv-Q Send-Q Local Address:Port               Peer Address:Port
@@ -40,7 +27,7 @@ timer:(keepalive,11sec,0) skmem:(r0,rb131072,t0,tb2626560,f0,w0,o0,bl0,d276) ts 
 	var t TcpMetric
 	t.Timestamp = time.Now().UnixMilli()
 	t.Type = MetricType_TCP
-	ParseSSOutput(&t, lines)
+	ParseSS(&t, lines)
 
 	assert.Equal(SocketState_TCP_LISTEN, t.Sockets[0].State)
 	assert.Equal(SocketState_TCP_LISTEN, t.Sockets[1].State)

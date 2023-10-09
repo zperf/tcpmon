@@ -1,4 +1,4 @@
-package tcpmon
+package server
 
 import (
 	"net"
@@ -10,6 +10,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
 
+	"github.com/zperf/tcpmon/logging"
 	"github.com/zperf/tcpmon/tcpmon/tutils"
 )
 
@@ -23,7 +24,7 @@ func NewQuorum(monitorConfig *MonitorConfig) *Quorum {
 	// create memberlist
 	config := memberlist.DefaultLANConfig()
 	config.Events = q
-	config.LogOutput = NewMemberlistLogger()
+	config.LogOutput = logging.NewMemberlistLogger()
 	config.BindPort = monitorConfig.QuorumPort
 	config.AdvertisePort = monitorConfig.QuorumPort
 

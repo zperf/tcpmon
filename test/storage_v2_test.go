@@ -2,6 +2,7 @@ package test
 
 import (
 	"crypto/rand"
+	"path/filepath"
 	"testing"
 
 	"github.com/rs/zerolog/log"
@@ -27,81 +28,122 @@ func TestStorageV2(t *testing.T) {
 }
 
 // SetupTest run before each test in the suite
-func (suite *StorageV2TestSuite) SetupTest() {
-	err := suite.fs.RemoveAll(suite.baseDir)
+func (s *StorageV2TestSuite) SetupTest() {
+	err := s.fs.RemoveAll(s.baseDir)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Delete dir failed")
 	}
 
-	err = suite.fs.MkdirAll(suite.baseDir, 0755)
+	err = s.fs.MkdirAll(s.baseDir, 0755)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Create dir failed")
 	}
 }
 
 // TestBasic perform basic functional tests
-func (suite *StorageV2TestSuite) TestBasic() {
-	ds, err := v2.NewDataStore(v2.NewConfig(suite.baseDir).WithFs(suite.fs))
-	suite.Require().NoError(err)
+func (s *StorageV2TestSuite) TestBasic() {
+	ds, err := v2.NewDataStore(v2.NewConfig(s.baseDir).WithFs(s.fs))
+	s.Require().NoError(err)
 	defer ds.Close()
 
 	err = ds.Put(randBuf(1 << 10))
-	suite.Require().NoError(err)
+	s.Require().NoError(err)
 
 	err = ds.Put(randBuf(1 << 10))
-	suite.Require().NoError(err)
+	s.Require().NoError(err)
 
 	err = ds.Put(randBuf(1 << 10))
-	suite.Require().NoError(err)
+	s.Require().NoError(err)
 }
 
-func (suite *StorageV2TestSuite) TestRotateFile() {
-	cfg := v2.NewConfig(suite.baseDir).
-		WithFs(suite.fs).
+func (s *StorageV2TestSuite) TestRotateFile() {
+	cfg := v2.NewConfig(s.baseDir).
+		WithFs(s.fs).
 		WithMaxSize(10 * (1 << 20)).
 		WithMaxEntriesPerFile(3)
 
 	ds, err := v2.NewDataStore(cfg)
-	suite.Require().NoError(err)
+	s.Require().NoError(err)
 
 	const toWrite = 10
 	const bufSize = 1 << 10
 	buf := randBuf(bufSize)
 	for i := 0; i < toWrite; i++ {
 		err := ds.Put(buf)
-		suite.Require().NoError(err)
+		s.Require().NoError(err)
 	}
 	ds.Close()
 
-	r, err := v2.NewDataStoreReader(v2.NewReaderConfig(suite.baseDir).WithFs(suite.fs))
-	suite.Require().NoError(err)
+	r, err := v2.NewDataStoreReader(v2.NewReaderConfig(s.baseDir).WithFs(s.fs))
+	s.Require().NoError(err)
 
 	count := 0
 	err = r.Iterate(func(buf []byte) {
-		suite.Require().Equal(bufSize, len(buf))
+		s.Require().Equal(bufSize, len(buf))
 		count++
 	})
-	suite.Require().NoError(err)
-	suite.Require().Equal(toWrite, count)
+	s.Require().NoError(err)
+	s.Require().Equal(toWrite, count)
 }
 
-func (suite *StorageV2TestSuite) TestGetLastFileNo() {
-	_, err := suite.fs.Create("tcpmon-dataf-1")
-	suite.Require().NoError(err)
-	_, err = suite.fs.Create("tcpmon-dataf-1.zst")
-	suite.Require().NoError(err)
+func (s *StorageV2TestSuite) TestGetLastestFileNo() {
+	_, err := s.fs.Create(s.baseDir + "/tcpmon-dataf-1")
+	s.Require().NoError(err)
+	_, err = s.fs.Create(s.baseDir + "/tcpmon-dataf-2.zst")
+	s.Require().NoError(err)
 
-	cfg := v2.NewConfig(suite.baseDir).
-		WithFs(suite.fs).
+	cfg := v2.NewConfig(s.baseDir).
+		WithFs(s.fs).
 		WithMaxSize(10 * (1 << 20)).
 		WithMaxEntriesPerFile(3)
 
 	ds, err := v2.NewDataStore(cfg)
-	suite.Require().NoError(err)
+	s.Require().NoError(err)
 	defer ds.Close()
 
 	last := ds.GetLatestFileNo()
-	suite.Require().Equal(uint32(1), last)
+	s.Require().Equal(uint32(3), last)
+}
+
+func (s *StorageV2TestSuite) TestGetLatestFileNo2() {
+	fileNames := []string{
+		"tcpmon-dataf-1",
+		"tcpmon-dataf-2",
+		"tcpmon-dataf-3.zst",
+		"tcpmon-dataf-4.zst",
+		"tcpmon-dataf-5.zst",
+		"tcpmon-dataf-6.zst",
+		"tcpmon-dataf-7.zst",
+		"tcpmon-dataf-8",
+		"tcpmon-dataf-9.zst",
+		"tcpmon-dataf-10.zst",
+		"tcpmon-dataf-11.zst",
+		"tcpmon-dataf-12",
+		"tcpmon-dataf-13.zst",
+		"tcpmon-dataf-14.zst",
+		"tcpmon-dataf-15.zst",
+		"tcpmon-dataf-16.zst",
+		"tcpmon-dataf-17.zst",
+		"tcpmon-dataf-18.zst",
+		"tcpmon-dataf-19.zst",
+		"tcpmon-dataf-20",
+	}
+	for _, name := range fileNames {
+		_, err := s.fs.Create(filepath.Join(s.baseDir, name))
+		s.Require().NoError(err)
+	}
+
+	cfg := v2.NewConfig(s.baseDir).
+		WithFs(s.fs).
+		WithMaxSize(10 * (1 << 20)).
+		WithMaxEntriesPerFile(3)
+
+	ds, err := v2.NewDataStore(cfg)
+	s.Require().NoError(err)
+	defer ds.Close()
+
+	last := ds.GetLatestFileNo()
+	s.Require().Equal(uint32(20+1), last) // when create the datastore, a new file is created
 }
 
 func randBuf(size int) []byte {

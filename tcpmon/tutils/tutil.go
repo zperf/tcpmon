@@ -1,6 +1,7 @@
 package tutils
 
 import (
+	"io"
 	"os"
 	"regexp"
 	"strconv"
@@ -9,6 +10,33 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog/log"
 )
+
+func FatalIf(err error) {
+	if err != nil {
+		log.Fatal().Err(err).Msg("Fatal error")
+	}
+}
+
+func IsDirEmpty(p string) (bool, error) {
+	fh, err := os.Open(p)
+	if err != nil {
+		return false, err
+	}
+	defer fh.Close()
+
+	_, err = fh.Readdirnames(1)
+	if err == io.EOF {
+		return true, nil
+	}
+	return false, err
+}
+
+func Btoi(x bool) uint32 {
+	if x {
+		return 1
+	}
+	return 0
+}
 
 func ParseUint32(s string) (uint32, error) {
 	val, err := strconv.ParseUint(s, 10, 32)
@@ -90,4 +118,18 @@ func SplitNewline(c rune) bool {
 
 func SplitSpace(c rune) bool {
 	return c == '\n' || c == '\r' || c == '\t' || c == ' '
+}
+
+func FileFallback(path ...string) string {
+	for _, p := range path {
+		ok, err := FileExists(p)
+		if err != nil {
+			log.Fatal().Err(err).Str("file", p).Msg("Stat file failed")
+		}
+
+		if ok {
+			return p
+		}
+	}
+	return ""
 }
