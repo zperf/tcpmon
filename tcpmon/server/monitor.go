@@ -37,7 +37,10 @@ func New(config MonitorConfig) (*Monitor, error) {
 		return nil, err
 	}
 
-	monitorConfig := NewCmdConfig()
+	var quorum *Quorum
+	if config.QuorumPort != -1 {
+		quorum = NewQuorum(&config)
+	}
 
 	return &Monitor{
 		config:        config,
@@ -91,11 +94,13 @@ func (m *Monitor) Run(ctx context.Context) error {
 
 	m.startHttpServer(m.config.HttpListen)
 
-	members := viper.GetStringMapString("members")
-	if members != nil {
-		_, err := m.quorum.TryJoin(members)
-		if err != nil {
-			log.Warn().Err(err).Msg("Join cluster failed")
+	if m.quorum != nil {
+		members := viper.GetStringMapString("members")
+		if members != nil {
+			_, err := m.quorum.TryJoin(members)
+			if err != nil {
+				log.Warn().Err(err).Msg("Join cluster failed")
+			}
 		}
 	}
 

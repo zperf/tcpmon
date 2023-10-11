@@ -62,7 +62,7 @@ func init() {
 	// monitor flags
 	startCmd.PersistentFlags().DurationP("collect-interval", "i", time.Second, "Metric collection interval")
 	startCmd.PersistentFlags().StringP("listen", "l", "0.0.0.0:6789", "HTTP server listening at this address")
-	startCmd.PersistentFlags().IntP("quorum-port", "q", 6790, "Quorum bind and advertised port")
+	startCmd.PersistentFlags().IntP("quorum-port", "q", -1, "Quorum bind and advertised port")
 
 	// monitor command flags
 	startCmd.PersistentFlags().String("cmd-ifconfig", "/usr/bin/ifconfig", "The path of 'ifconfig'")

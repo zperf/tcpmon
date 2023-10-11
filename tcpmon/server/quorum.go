@@ -83,7 +83,6 @@ func (q *Quorum) NotifyJoin(node *memberlist.Node) {
 		Str("meta", string(node.Meta)).
 		Msgf("Member joined")
 	q.configMemberJoin(node.Address(), string(node.Meta))
-
 }
 
 func (q *Quorum) NotifyLeave(node *memberlist.Node) {

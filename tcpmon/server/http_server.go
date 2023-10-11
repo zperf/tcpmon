@@ -15,10 +15,14 @@ import (
 
 func RegisterRoutes(router *gin.Engine, mon *Monitor) {
 	router.GET("/", GetHome)
-	router.GET("/members", GetMember(mon.quorum))
-	router.POST("/members", JoinCluster(mon.quorum))
-	router.POST("/members/leave", LeaveCluster(mon.quorum))
 	router.GET("/backup", GetBackup(mon))
+
+	if mon.quorum != nil {
+		router.GET("/members", GetMember(mon.quorum))
+		router.POST("/members", JoinCluster(mon.quorum))
+		router.POST("/members/leave", LeaveCluster(mon.quorum))
+	}
+
 	pprof.Register(router)
 }
 
@@ -28,7 +32,7 @@ func GetHome(c *gin.Context) {
 
 func GetBackup(mon *Monitor) func(c *gin.Context) {
 	hostname := tutils.Hostname()
-	filename := tutils.SafeFilename(fmt.Sprintf("tcpmon-datastore-%s-%s.tar", hostname, mon.quorum.MyIP()))
+	filename := tutils.SafeFilename(fmt.Sprintf("tcpmon-datastore-%s.tar", hostname))
 
 	return func(c *gin.Context) {
 		c.Writer.Header().Set("Content-Type", "application/octet-stream")
