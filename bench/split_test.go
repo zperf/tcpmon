@@ -66,3 +66,13 @@ func BenchmarkFieldsFunc3(b *testing.B) {
 		_ = fields
 	}
 }
+
+func BenchmarkSplitFields(b *testing.B) {
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		fields := make([]string, 0)
+		fields = append(fields, strings.Fields(str)...)
+		_ = fields
+	}
+}
