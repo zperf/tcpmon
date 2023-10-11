@@ -5,10 +5,14 @@ A simple TCP monitor for Linux.
 ## Installation
 
 ```bash
-make rpm
+# build the RPM
+make package
+
+# install
+rpm -Uvh tcpmon-<version>.el7.x86_64.rpm
 ```
 
-## Usage
+## Getting started
 
 Start collecting monitoring data:
 
@@ -19,16 +23,16 @@ tcpmon start
 Collection metrics snapshot:
 
 ```bash
-curl -JfSsLO http://<ip>:6789/backup
+curl -JfSsLO http://127.0.0.1:6789/backup
 ```
 
-Export metrics:
+Export metrics in line protocol:
 
 ```bash
-tcpmon export --format tsdb <backup-file> > db.txt
+tcpmon export -o metrics.txt <backup-dir>
 ```
 
-Then import `db.txt` in OpenTSDB, add it as Grafana DataSource, find out what is wrong.
+Then import `metrics.txt` in InfluxDB and find out what is going wrong.
 
 ## Configuration
 
@@ -37,7 +41,11 @@ Config file located at `$HOME/.tcpmon/config.yaml` (Development) or `/etc/tcpmon
 ## Development
 
 ```bash
+# build a binary
 make
+
+# build binary for Linux
+make build-linux
 ```
 
 ## License
