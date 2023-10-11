@@ -1,0 +1,701 @@
+- semver: 0.9.0
+  date: 2023-08-22T17:09:25+08:00
+  packager: GitHub <noreply@github.com>
+  changes:
+    - commit: 8bb68353e73c2553b41099a59defe46c420b5934
+      note: |-
+        Refactoring, rewriting, and enhancements (#46)
+
+        * badger: log to zerolog
+
+        * storage: try to reduce memory consume
+
+        * refactor: renovate all modules
+
+        - cmd: reorganize all flags
+        - main: print log dir and config file path
+        - build: add 'make build-linux' command to build linux binary
+        - ss: support rwnd_limited and sndbuf_limited
+        - ss: fix ut
+        - quorum: store members in the db
+        - http: reorg all APIs
+        - log: add loggers for 3rd modules
+
+        And:
+
+        - update go.mod
+        - update proto
+        - adds a docker runtime to test quorum with network stacks
+
+        * refactor: refine the restore command
+
+        * refactor: reorg all flags and config
+
+        * cmd: add commands to crud the db
+
+        * util: refine ToProto() method
+
+        * http: member store and return its HTTP address
+
+        * cmd: add op command to backup whole cluster
+
+        * monitor: refine command args config
+
+        * docker: add many distro
+
+        * rpm: fix default config
+
+        * ut: fix invalid test db path
+
+        * Update package version
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: 5da8845dcb15f5f0f3f84eceae8d1c74ccb519ec
+      note: |-
+        gossip: use gossip to get cluster member information (#44)
+
+        - add GossipServer
+        - add http /members interface
+
+        ---------
+
+        Co-authored-by: xiaohui.ren <xiaohui.ren@smartx.com>
+      author:
+        name: 鸭心驰神往
+        email: 51416475+1023280072@users.noreply.github.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: 915c2c700fe34dac66976fb6f062a9ed2400f408
+      note: |-
+        cmd_ss: parse SocketMetric.processes (#43)
+
+        * cmd_ss: parse SocketMetric.processes
+
+        fix bugs:
+        * add rate support for Mbps, Gbps
+        * add timer.ExpireTimeMicrosecond support like 5min, 5min5sec,
+          005ms, 1.123ms
+
+        ---------
+
+        Co-authored-by: xiaohui.ren <xiaohui.ren@smartx.com>
+      author:
+        name: 鸭心驰神往
+        email: 51416475+1023280072@users.noreply.github.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: d3510b517821b875bec6a48e08fa215c59b7470e
+      note: |-
+        http: register pprof handlers
+
+        Package pprof serves via its HTTP server runtime profiling data in the
+        format expected by the pprof visualization tool
+
+        eg. go tool pprof http://localhost:6789/debug/pprof/heap
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: fanyang
+        email: fanyang89@outlook.com
+    - commit: ae7ee7f74d6f278ae8a0b5f7c705f7ccef58a7a3
+      note: |-
+        monitor: support collecting socket stats at el7 (#39)
+
+        * cmd_ss: add function ParseSSOutputWithoutParamO
+
+        ---------
+
+        Co-authored-by: xiaohui.ren <xiaohui.ren@smartx.com>
+      author:
+        name: 鸭心驰神往
+        email: 51416475+1023280072@users.noreply.github.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: 827bd419a7188a59d6c891912f4d0d4385780a2b
+      note: 'build: remove unused files'
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: fanyang
+        email: fanyang@smartx.com
+    - commit: ce37eacc9a1f5618e6378f9b7e675e8f4d64e7dc
+      note: |-
+        cmd: load db from backup archive (#38)
+
+        * root: modify delete-size, reclaim-period, gc-period value
+
+        * logger: add log file function
+
+        -- log file default max size is 10MB
+        -- 1 current writting log file, default max to 5 backups
+        -- remove the oldest backup log file first
+        -- log file has 10 days lifetime for default
+
+        * logger: set log level from command line args
+
+        * logger: revise lumberjack.Logger to use local time, not UTC time
+
+        * backup: write db backup to file in json format
+
+        fix-bug:
+        * storage.GetSize() -> storage.GetSize(prefix)
+
+        * lap: add function of loading backup to db and parse db
+
+        detailed function:
+        * load backup to db
+        * parse db to stdout (with prefix)
+        * parse db to output file (with prefix)
+
+        fix-bug:
+        * storage.GetSize() -> storage.GetSize(prefix)
+
+        ---------
+
+        Co-authored-by: xiaohui.ren <xiaohui.ren@smartx.com>
+      author:
+        name: 鸭心驰神往
+        email: 51416475+1023280072@users.noreply.github.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: 85bcf4477622507777b04670b1a099de4059387e
+      note: |-
+        build(deps): bump golang.org/x/sys in /rpm
+
+        Bumps [golang.org/x/sys](https://github.com/golang/sys) from 0.0.0-20210927094055-39ccf1dd6fa6 to 0.1.0.
+        - [Commits](https://github.com/golang/sys/commits/v0.1.0)
+
+        ---
+        updated-dependencies:
+        - dependency-name: golang.org/x/sys
+          dependency-type: indirect
+        ...
+      author:
+        name: dependabot[bot]
+        email: 49699333+dependabot[bot]@users.noreply.github.com
+      committer:
+        name: fanyang
+        email: fanyang89@outlook.com
+    - commit: bc998bb03de5ab1083091e203e8b1ea26bd7fcfb
+      note: 'rpm: update binary file mode'
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: fanyang
+        email: fanyang@smartx.com
+    - commit: 319516e450fab4f82a61089161a7acc4f80da59a
+      note: |-
+        cmd: add command to generate default config (#35)
+
+        * cmd: add get-default config command
+
+        * rpm: update default config file
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: 91854caac52b81773e0da1b21d9262de5e7cd41c
+      note: |-
+        log: use local timezone (#34)
+
+        * logger: revise lumberjack.Logger to use local time, not UTC time
+
+        Co-authored-by: xiaohui.ren <xiaohui.ren@smartx.com>
+      author:
+        name: 鸭心驰神往
+        email: 51416475+1023280072@users.noreply.github.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: b752ea2bbe347ef1c806a3bd65628141a604d157
+      note: |-
+        monitor: adds support for collecting ss details (#33)
+
+        * tools: add punused
+
+        To find out which functions is not used
+
+        * tools: add staticcheck
+
+        * storage: use GetSize() when reclaiming
+
+        * util: remove unused functions
+
+        * storage: fix linter error ineffective break
+
+        * storage: reclaiming fast return
+
+        Check before creating new txn: cond fails and return
+
+        * git: ignore vscode folder
+
+        * monitor: add supports for ss details
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: ad6a6941a7a4536d171b04dece72e29faedcc4df
+      note: |-
+        log: set log levels (#32)
+
+        * root: modify delete-size, reclaim-period, gc-period value
+
+        * logger: add log file function
+
+        -- log file default max size is 10MB
+        -- 1 current writting log file, default max to 5 backups
+        -- remove the oldest backup log file first
+        -- log file has 10 days lifetime for default
+
+        * logger: set log level from command line args
+
+        ---------
+
+        Co-authored-by: xiaohui.ren <xiaohui.ren@smartx.com>
+      author:
+        name: 鸭心驰神往
+        email: 51416475+1023280072@users.noreply.github.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: 10cb0bf51e4c0a58da5eaa3b60102aeea7bcaecd
+      note: |-
+        log: persistent log files (#31)
+
+        * root: modify delete-size, reclaim-period, gc-period value
+
+        * logger: add log file function
+
+        -- log file default max size is 10MB
+        -- 1 current writting log file, default max to 5 backups
+        -- remove the oldest backup log file first
+        -- log file has 10 days lifetime for default
+
+        ---------
+
+        Co-authored-by: xiaohui.ren <xiaohui.ren@smartx.com>
+      author:
+        name: 鸭心驰神往
+        email: 51416475+1023280072@users.noreply.github.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: 07cc5eb915815f5a6e9c3898f62301e2d50680be
+      note: |-
+        build: generate proto with docker (#30)
+
+        * build: generate proto with docker
+
+        Improve build consistency and avoid interleaves from different versions
+        of protobuf
+
+        * proto: update
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: 61ab793bc81aac5c4a83c50e73d1f24276654df0
+      note: |-
+        cmd: reduce reclaiming interval (#29)
+
+        Co-authored-by: xiaohui.ren <xiaohui.ren@smartx.com>
+      author:
+        name: 鸭心驰神往
+        email: 51416475+1023280072@users.noreply.github.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: 42038dec53da73ea8b70020908a7a078141de5f4
+      note: |-
+        Fix an issue that reclaims more keys than expected (#28)
+
+        * storage: GetSize() disable prefetch values
+
+        GetSize() only counting keys. Disable value prefetch to accelerate
+
+        * storage: ignore GC errors
+
+        Next value GC will be triggered by ticker in a constant interval.
+
+        * refactor: rename GC to gc
+
+        * storage: fix an issue that reclaiming more keys than expected
+
+        * storage: check prefix while iterating over keys
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: 7afa13432c2a850731fe3a6f3e1d19b5bdc041cd
+      note: |-
+        datastore: reclaim the oldest metrics (#27)
+
+        * add function checkDeletePrefix, periodicDelete and periodicGC
+
+        * revise constructor to pass the PeriodOption
+
+        * rename periodicDelete to periodicReclaim, add unit test for periodicReclaim
+
+        ---------
+        Co-authored-by: xiaohui.ren <xiaohui.ren@smartx.com>
+      author:
+        name: 鸭心驰神往
+        email: 51416475+1023280072@users.noreply.github.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+- semver: 0.1.0
+  date: 2023-08-04T08:39:08+08:00
+  packager: GitHub <noreply@github.com>
+  changes:
+    - commit: e10b1522d2ebaf9e9553d58c782bf070f4295e74
+      note: |-
+        RPM packagings (#25)
+
+        * build: support RPM packaging
+
+        Usage: `make package` to build RPM.
+
+        * build: support aarch64 RPM packaging
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: 1200b6dceaa691a0c018e5e58eec51e0b008da88
+      note: 'cmd: write default config file (#21)'
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: ec621db5284324da7e570dd5a3fc8cbdbc7f4199
+      note: |-
+        http: add backup API (#18)
+
+        * db: close when exits
+
+        Close badger db can flush all the data to disks.
+
+        * http: add backup API
+
+        To download a database full backup:
+
+        % curl -LOJ http://127.0.0.1:6789/backup
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: 22455dac53b3e8e1970d7c96cc2082a94e712b72
+      note: |-
+        Some chores, cleaning trashes, upgrading dependencies (#16)
+
+        * refactor: do some code cleaning
+
+        1. remove metric BSON schema
+        2. remove unused .editorconfig item
+        3. fix variable name conflicts
+
+        * mod: upgrade zerolog to 1.30.0
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: d08a13549edfc68e4ca37b07885d4eda63c33684
+      note: |-
+        Add new API /metrics to get them (#17)
+
+        * http: add API to get metrics
+
+        1. GET /metrics, returns all metrics keys in the db
+        2. GET /metrics/:type, eg. /metrics/nic, returns all NIC metrics
+
+        * http: remove redundant APIs and some simple refactoring
+
+        1. Add unit tests for datastore APIs
+        2. Remove HTTP API /last since /metrics have all the features
+        3. Remove datastore peek window
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: 7a0638ca84583fa0f2c9948020f0c460a95cd324
+      note: 'build: fix inf loop when the tool not exists'
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: fanyang
+        email: fanyang@smartx.com
+    - commit: a928a94f169ee7ec7a0f894009b845eb5a60b8af
+      note: |4-
+          monitor: fix nil pointer access when collection timeout  (#14)
+
+          * http: move closures to func
+
+          * refactor: rename StoreRequest to KVPair
+
+          * monitor: fix nil pointer access when collection timeout
+
+          When the collection timeout, returns an error to the coroutine, sends
+          the nil request to datastore. Datastore writer will crash.
+
+          This patch fix the error handling of metric collection.
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: be240960a6f699ac9918cee6c221d74f048aff3a
+      note: 'monitor: fix netstat metric collection in the newer Linux (#13)'
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: 31e6ff554c1b5ae1ef479f8ab4a9d856565e08ae
+      note: 'proto: fix typo'
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: fanyang
+        email: fanyang@smartx.com
+    - commit: 4031df9fa37a0b6b33a65573d1fe0659654c1a9d
+      note: |-
+        proto: snake case the fields
+
+        Follow the protobuf guides.
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: fanyang
+        email: fanyang@smartx.com
+    - commit: 9951aca9f4c8af159cb6dd1aa664eba1aff51202
+      note: 'build: go mod tidy'
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: fanyang
+        email: fanyang@smartx.com
+    - commit: 661fef96a6c394a4627be7b27e95f545e3ee9c0e
+      note: |-
+        introduce HTTP server
+
+        - Use gin as HTTP framework
+        - Refine signals. Use signal and context to control service life-cycle
+        - New method: GET /last for the last x metric
+          Parameters in query string:
+            batch: int. how many metrics return at this response
+            prefix: string. filter key with prefix
+            value: bool. Return values in the response
+
+          eg. curl http://127.0.0.1:6789/last?batch=10&prefix=nic&value=1 | jq
+          will return the last as many as 10 metrics, prefix is nic and their
+          values
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: fanyang
+        email: fanyang@smartx.com
+    - commit: 591b210c45d454fb640c740fb55b561cc6a6af88
+      note: |-
+        build: add golangci-lint and the checking for toolchains
+
+        Toolchains: protoc, protoc-gen-go, golangci-lint
+
+        `make proto` to generate new .pb.go
+
+        `make check` to do code linting and running unit tests
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: fanyang
+        email: fanyang@smartx.com
+    - commit: 5face0a0204916684be9219a551707618c1af2dc
+      note: |-
+        monitor: introduce netstat counters (#11)
+
+        * add unittest of func ParseNetstatOutput
+
+        Co-authored-by: xiaohui.ren <xiaohui.ren@smartx.com>
+      author:
+        name: 鸭心驰神往
+        email: 51416475+1023280072@users.noreply.github.com
+      committer:
+        name: fanyang
+        email: fanyang@smartx.com
+    - commit: 236324f3c81756fb1841d3c12aa5e97076865101
+      note: |-
+        proto: follow protobuf guidelines (#10)
+
+        Fields are naming as snake cases.
+
+        Follow this guide: https://protobuf.dev/programming-guides/style/
+
+        The namings send_q, and recv_q are from
+        https://github.com/uber/fiber/blob/master/examples/bench_queue.py#L50
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: eceaaed4f8e22f6fa54f9db76b6089f1fd715523
+      note: |-
+        build: fix missing modules (#9)
+
+        mod: github.com/stretchr/testify
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: bc8269d64d2a18334a122c66d86b7586e540098d
+      note: 'monitor: get interval from config (#6)'
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: 30b2859699c02abd084aeadab7c74b15d2b43da8
+      note: 'cmd: add flags and configuration parsing (#5)'
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: 9d029d8a97598cfa1c9529706111a2fd427f16f2
+      note: |-
+        monitor: add unit tests for command parsers (#4)
+
+        * monitor: add unit tests for command parsers
+
+        * build: add install deps shortcuts
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: 7908a3011781ca2e7464155664c4080282d41b37
+      note: |-
+        Nic monitor with protobuf (#3)
+
+        * util: add parse uint32 fn
+
+        * refactor: make golangci-lint happy
+
+        * Update proto
+
+        Add IfaceMetric and NicMetric
+
+        * monitor: iface monitor uses protobuf
+
+        * refactor: rename socket monitor to tcp monitor
+
+        * monitor: fix invalid type in the format string
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: 5b610b2594888a89f4f94f34ce93b21db20d6f25
+      note: Create go.yml
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: fanyang
+        email: fanyang@smartx.com
+    - commit: c38df12fa9fd9f55d34524078271fcb64c68bb48
+      note: |-
+        introduce metrics storage
+
+        - Use BadgerDB as local key-value store.
+        - Unified writer. All metrics send to the writer and persistent.
+        - Protobuf.
+        - Gracefully shutdown. To close db safely.
+        - Parallel metric collection.
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: fanyang
+        email: fanyang89@outlook.com
+    - commit: a4ad4f0f0d48b164c559bf57d14fa90a882834d9
+      note: 'refactor: rename iface records'
+      author:
+        name: fanyang
+        email: fanyang@smartx.com
+      committer:
+        name: fanyang
+        email: fanyang@smartx.com
+    - commit: eec41b6ad670ca10301d491e53cef3d50b96b35b
+      note: |-
+        Support iface info collection (#1)
+
+        * add IfaceMonitor and ifconfig
+
+        ---------
+
+        Co-authored-by: xiaohui.ren <xiaohui.ren@smartx.com>
+      author:
+        name: 鸭心驰神往
+        email: 51416475+1023280072@users.noreply.github.com
+      committer:
+        name: GitHub
+        email: noreply@github.com
+    - commit: dd6cffcd61481c799d7f4f0f699be9aab3f92dd7
+      note: Create project
+      author:
+        name: fanyang
+        email: fanyang89@outlook.com
+      committer:
+        name: fanyang
+        email: fanyang89@outlook.com
+    - commit: 7bfb8899dc7613e94d166b7ae23b735643bd009d
+      note: Initial commit
+      author:
+        name: fanyang
+        email: fanyang89@outlook.com
+      committer:
+        name: fanyang
+        email: fanyang89@outlook.com

@@ -1,21 +1,25 @@
 ROOT_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 BUILD_FLAGS := -trimpath -gcflags "all=-N -l"
+DEV_BUILD_FLAGS := -race
+
+VERSION := $(shell git describe --always --tags | sed 's/^v//g' | awk -F- '{print $$1}')
+RELEASE := $(shell git describe --always --tags | awk -F- '{print $$2".el7"}')
 
 .PHONY: all
 all: build
 
 .PHONY: build
 build:
-	go build $(BUILD_FLAGS) -o bin/tcpmon main.go
+	go build $(DEV_BUILD_FLAGS) $(BUILD_FLAGS) -o bin/tcpmon main.go
 
 .PHONY: build-linux
 build-linux:
-	GOOS=linux go build $(BUILD_FLAGS) -o bin/tcpmon main.go
+	GOOS=linux go build $(DEV_BUILD_FLAGS) $(BUILD_FLAGS) -o bin/tcpmon main.go
 
 .PHONY: release
 release: proto
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build $(BUILD_FLAGS) -o bin/tcpmon-x86_64 github.com/zperf/tcpmon
-	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build $(BUILD_FLAGS) -o bin/tcpmon-aarch64 github.com/zperf/tcpmon
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build $(BUILD_FLAGS) -o bin/x86_64/tcpmon github.com/zperf/tcpmon
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build $(BUILD_FLAGS) -o bin/aarch64/tcpmon github.com/zperf/tcpmon
 
 .PHONY: proto
 proto:
@@ -40,7 +44,10 @@ package: release rpm
 
 .PHONY: rpm
 rpm:
-	$(MAKE) -C rpm
+ifeq (, $(shell which nfpm))
+	$(MAKE) tools
+endif
+	VERSION=$(VERSION) RELEASE=$(RELEASE) nfpm package -p rpm -t rpm/
 
 .PHONY: clean
 clean:

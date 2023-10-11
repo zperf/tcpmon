@@ -8,3 +8,4 @@ all:
 	go install github.com/chzchzchz/goword@latest
 	go install github.com/gogo/protobuf/protoc-gen-gogofaster@latest
 	go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+	go install github.com/goreleaser/chglog/cmd/chglog@latest

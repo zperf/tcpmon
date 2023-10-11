@@ -1,0 +1,28 @@
+name: "tcpmon"
+arch: x86_64
+platform: linux
+version: ${VERSION}
+maintainer: "fanyang <fanyang89@outlook.com>"
+description: Tcpmon is a simple network monitor
+homepage: "https://github.com/zperf/tcpmon"
+license: "MIT"
+changelog: "changelog.yml"
+release: ${RELEASE}
+
+contents:
+- src: ./bin/x86_64/tcpmon
+  dst: /usr/bin/tcpmon
+- src: ./rpm/tcpmon.yaml
+  dst: /etc/tcpmon/config.yaml
+  type: config
+- src: /usr/bin/tcpmon
+  dst: /sbin/tcpmon
+  type: symlink
+- src: ./rpm/tcpmon.service
+  dst: /etc/systemd/system/tcpmon.service
+
+overrides:
+  rpm:
+    scripts:
+      preinstall: ./rpm/preinstall.sh
+      postremove: ./rpm/postremove.sh
