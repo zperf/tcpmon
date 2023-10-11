@@ -46,7 +46,7 @@ func (m *NetstatCollector) doCollect(now time.Time) (*tproto.NetstatMetric, erro
 		return nil, err
 	}
 
-	return nil, nil
+	return &metric, nil
 }
 
 func CollectProc(t string, metric *tproto.NetstatMetric) error {
