@@ -9,15 +9,16 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
+	"github.com/zperf/tcpmon/tcpmon/collector"
 	storagev2 "github.com/zperf/tcpmon/tcpmon/storage/v2"
 )
 
 type Monitor struct {
 	config MonitorConfig
 
-	socketMonitor *SocketMonitor
-	nicMonitor    *NicMonitor
-	netMonitor    *NetstatMonitor
+	socketCollector *collector.SocketCollector
+	nicCollector    *collector.NicCollector
+	netCollector    *collector.NetstatCollector
 
 	datastore  *storagev2.DataStore
 	httpServer *http.Server
@@ -31,24 +32,25 @@ type MonitorConfig struct {
 	DataStoreConfig storagev2.Config
 }
 
-func New(config MonitorConfig) (*Monitor, error) {
-	ds, err := storagev2.NewDataStore(&config.DataStoreConfig)
+func New(monitorConfig MonitorConfig) (*Monitor, error) {
+	ds, err := storagev2.NewDataStore(&monitorConfig.DataStoreConfig)
 	if err != nil {
 		return nil, err
 	}
 
 	var quorum *Quorum
-	if config.QuorumPort != -1 {
-		quorum = NewQuorum(&config)
+	if monitorConfig.QuorumPort != -1 {
+		quorum = NewQuorum(&monitorConfig)
 	}
 
+	collectorConfig := collector.NewConfig()
 	return &Monitor{
-		config:        config,
-		datastore:     ds,
-		quorum:        NewQuorum(&config),
-		socketMonitor: &SocketMonitor{monitorConfig},
-		nicMonitor:    &NicMonitor{monitorConfig},
-		netMonitor:    &NetstatMonitor{monitorConfig},
+		config:          monitorConfig,
+		datastore:       ds,
+		quorum:          quorum,
+		socketCollector: collector.NewSocket(collectorConfig),
+		nicCollector:    collector.NewNic(collectorConfig),
+		netCollector:    collector.NewNetstat(collectorConfig),
 	}, nil
 }
 
@@ -58,7 +60,7 @@ func (m *Monitor) Collect(now time.Time, tx chan<- []byte) {
 
 	go func() {
 		defer wg.Done()
-		req, err := m.socketMonitor.Collect(now)
+		req, err := m.socketCollector.Collect(now)
 		if err != nil {
 			log.Warn().Err(err).Msg("collect socket metrics failed")
 			return
@@ -68,7 +70,7 @@ func (m *Monitor) Collect(now time.Time, tx chan<- []byte) {
 
 	go func() {
 		defer wg.Done()
-		req, err := m.nicMonitor.Collect(now)
+		req, err := m.nicCollector.Collect(now)
 		if err != nil {
 			log.Warn().Err(err).Msg("collect nic metrics failed")
 			return
@@ -78,7 +80,7 @@ func (m *Monitor) Collect(now time.Time, tx chan<- []byte) {
 
 	go func() {
 		defer wg.Done()
-		req, err := m.netMonitor.Collect(now)
+		req, err := m.netCollector.Collect(now)
 		if err != nil {
 			log.Warn().Err(err).Msg("collect net metrics failed")
 			return

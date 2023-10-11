@@ -1,4 +1,4 @@
-package server
+package collector
 
 import (
 	"context"
@@ -12,12 +12,16 @@ import (
 	"github.com/zperf/tcpmon/tcpmon/tproto"
 )
 
-// SocketMonitor collect sockets statistics
-type SocketMonitor struct {
-	config *CmdConfig
+// SocketCollector collect sockets statistics
+type SocketCollector struct {
+	config *Config
 }
 
-func (m *SocketMonitor) Collect(now time.Time) ([]byte, error) {
+func NewSocket(config *Config) *SocketCollector {
+	return &SocketCollector{config: config}
+}
+
+func (m *SocketCollector) Collect(now time.Time) ([]byte, error) {
 	r, err := m.doCollect(now)
 	if err != nil {
 		return nil, err
@@ -32,7 +36,7 @@ func (m *SocketMonitor) Collect(now time.Time) ([]byte, error) {
 	return val, nil
 }
 
-func (m *SocketMonitor) doCollect(now time.Time) (*tproto.TcpMetric, error) {
+func (m *SocketCollector) doCollect(now time.Time) (*tproto.TcpMetric, error) {
 	c := cmd.NewCmd(m.config.PathSS, m.config.ArgSS)
 	ctx, cancel := context.WithTimeout(context.Background(), m.config.Timeout)
 	defer cancel()

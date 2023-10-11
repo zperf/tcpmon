@@ -1,4 +1,4 @@
-package server
+package collector
 
 import (
 	"context"
@@ -12,9 +12,13 @@ import (
 	"github.com/zperf/tcpmon/tcpmon/tproto"
 )
 
-type NicMonitor struct{ config *CmdConfig }
+type NicCollector struct{ config *Config }
 
-func (m *NicMonitor) Collect(now time.Time) ([]byte, error) {
+func NewNic(config *Config) *NicCollector {
+	return &NicCollector{config: config}
+}
+
+func (m *NicCollector) Collect(now time.Time) ([]byte, error) {
 	r, err := m.doCollect(now)
 	if err != nil {
 		return nil, err
@@ -29,7 +33,7 @@ func (m *NicMonitor) Collect(now time.Time) ([]byte, error) {
 	return val, nil
 }
 
-func (m *NicMonitor) doCollect(now time.Time) (*tproto.NicMetric, error) {
+func (m *NicCollector) doCollect(now time.Time) (*tproto.NicMetric, error) {
 	c := cmd.NewCmd(m.config.PathIfconfig)
 	ctx, cancel := context.WithTimeout(context.Background(), m.config.Timeout)
 	defer cancel()

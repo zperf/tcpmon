@@ -1,4 +1,4 @@
-package server
+package collector
 
 import (
 	"os"
@@ -13,9 +13,13 @@ import (
 
 const procNet = "/proc/net/"
 
-type NetstatMonitor struct{ config *CmdConfig }
+type NetstatCollector struct{ config *Config }
 
-func (m *NetstatMonitor) Collect(now time.Time) ([]byte, error) {
+func NewNetstat(config *Config) *NetstatCollector {
+	return &NetstatCollector{config: config}
+}
+
+func (m *NetstatCollector) Collect(now time.Time) ([]byte, error) {
 	r, err := m.doCollect(now)
 	if err != nil {
 		return nil, err
@@ -28,7 +32,7 @@ func (m *NetstatMonitor) Collect(now time.Time) ([]byte, error) {
 	return buf, nil
 }
 
-func (m *NetstatMonitor) doCollect(now time.Time) (*tproto.NetstatMetric, error) {
+func (m *NetstatCollector) doCollect(now time.Time) (*tproto.NetstatMetric, error) {
 	var metric tproto.NetstatMetric
 	metric.Timestamp = now.Unix()
 

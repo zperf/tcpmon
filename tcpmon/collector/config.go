@@ -1,4 +1,4 @@
-package server
+package collector
 
 import (
 	"time"
@@ -8,7 +8,7 @@ import (
 	"github.com/zperf/tcpmon/tcpmon/tutils"
 )
 
-type CmdConfig struct {
+type Config struct {
 	PathSS string
 	ArgSS  string
 
@@ -18,8 +18,8 @@ type CmdConfig struct {
 	Timeout time.Duration
 }
 
-func NewCmdConfig() *CmdConfig {
-	return &CmdConfig{
+func NewConfig() *Config {
+	return &Config{
 		PathSS: tutils.FileFallback(
 			viper.GetString("cmd-ss"),
 			viper.GetString("cmd-ss2")),
