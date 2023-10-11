@@ -52,7 +52,12 @@ func (e *Exporter) exportMetricTcp(m *tproto.TcpMetric) {
 		processText := strings.Join(lo.Map(s.GetProcesses(), func(p *tproto.ProcessInfo, _ int) string {
 			return fmt.Sprintf("cmd:%s;pid:%v;fd:%v", p.GetName(), p.GetPid(), p.GetFd())
 		}), ";")
-		prefix := fmt.Sprintf("tcp,LocalAddr=\"%s\",PeerAddr=\"%s\",Hostname=\"%s\",Process=\"%v\"", s.GetLocalAddr(), s.GetPeerAddr(), e.hostname, processText)
+		var prefix string
+		if processText == "" {
+			prefix = fmt.Sprintf("tcp,LocalAddr=%s,PeerAddr=%s,Hostname=%s", s.GetLocalAddr(), s.GetPeerAddr(), e.hostname)
+		} else {
+			prefix = fmt.Sprintf("tcp,LocalAddr=%s,PeerAddr=%s,Hostname=%s,Process=%v", s.GetLocalAddr(), s.GetPeerAddr(), e.hostname, processText)
+		}
 
 		for _, timer := range s.GetTimers() {
 			e.Printf("%s Timer=\"%v\",ExpireTimeUs=%v,Retrans=%v %v", prefix, timer.GetName(), timer.GetExpireTimeUs(), timer.GetRetrans(), ts)
@@ -122,7 +127,7 @@ func (e *Exporter) exportMetricNic(m *tproto.NicMetric) {
 	ts := m.GetTimestamp()
 
 	for _, i := range m.GetIfaces() {
-		prefix := fmt.Sprintf("nic,Name=\"%v\",Hostname=\"%v\"", i.GetName(), e.hostname)
+		prefix := fmt.Sprintf("nic,Name=%v,Hostname=%v", i.GetName(), e.hostname)
 
 		// rx
 		e.Printf("%s RxErrors=%v %v\n", prefix, i.GetRxErrors(), ts)
@@ -141,7 +146,7 @@ func (e *Exporter) exportMetricNic(m *tproto.NicMetric) {
 
 func (e *Exporter) exportMetricNet(m *tproto.NetstatMetric) {
 	ts := m.GetTimestamp()
-	prefix := fmt.Sprintf("net,Hostname=\"%v\"", e.hostname)
+	prefix := fmt.Sprintf("net,Hostname=%v", e.hostname)
 
 	e.Printf("%s IpForwarding=%v %v", prefix, m.GetIpForwarding(), ts)
 	e.Printf("%s IpDefaultTtl=%v %v", prefix, m.GetIpDefaultTtl(), ts)
