@@ -8,13 +8,13 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
-	"github.com/zperf/tcpmon/tcpmon/export/tsdb"
+	"github.com/zperf/tcpmon/tcpmon/export/influxdb"
 	"github.com/zperf/tcpmon/tcpmon/storage"
 	"github.com/zperf/tcpmon/tcpmon/tproto"
 	"github.com/zperf/tcpmon/tcpmon/tutils"
 )
 
-var FlagExportFormat = exportFormatTsdb
+var FlagExportFormat = exportFormatInfluxdb
 var FlagHostname string
 var FlagOutput string
 
@@ -34,10 +34,10 @@ var exportCmd = &cobra.Command{
 			writer = w
 		}
 
-		var exporter *tsdb.Exporter
+		var exporter *influxdb.Exporter
 		switch FlagExportFormat.String() {
-		case "tsdb":
-			exporter = tsdb.New(FlagHostname, writer)
+		case "influxdb":
+			exporter = influxdb.New(FlagHostname, writer)
 		default:
 			log.Fatal().Str("format", FlagExportFormat.String()).Msg("")
 		}
@@ -66,7 +66,7 @@ var exportCmd = &cobra.Command{
 type ExportFormat string
 
 const (
-	exportFormatTsdb ExportFormat = "tsdb"
+	exportFormatInfluxdb ExportFormat = "influxdb"
 )
 
 func (f *ExportFormat) String() string {
@@ -75,11 +75,11 @@ func (f *ExportFormat) String() string {
 
 func (f *ExportFormat) Set(v string) error {
 	switch v {
-	case "tsdb":
+	case "influxdb":
 		*f = ExportFormat(v)
 		return nil
 	default:
-		return errors.New("Export to tsdb format is the only supported")
+		return errors.New("Export to influxdb format is the only supported")
 	}
 }
 
