@@ -1,6 +1,6 @@
 module github.com/zperf/tcpmon
 
-go 1.20
+go 1.21.3
 
 require (
 	github.com/cockroachdb/errors v1.11.1
@@ -9,7 +9,6 @@ require (
 	github.com/go-cmd/cmd v1.4.2
 	github.com/gogo/protobuf v1.3.2
 	github.com/hashicorp/memberlist v0.5.0
-	github.com/influxdata/influxdb-client-go/v2 v2.12.3
 	github.com/klauspost/compress v1.16.7
 	github.com/rs/zerolog v1.30.0
 	github.com/samber/lo v1.38.1
@@ -31,7 +30,6 @@ require (
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/deepmap/oapi-codegen v1.8.2 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/getsentry/sentry-go v0.23.0 // indirect
@@ -48,9 +46,7 @@ require (
 	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/influxdata/line-protocol v0.0.0-20200327222509-2487e7298839 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
