@@ -27,7 +27,7 @@ var exportCmd = &cobra.Command{
 
 		writer := os.Stdout
 		if FlagOutput != "-" {
-			w, err := os.OpenFile(FlagOutput, os.O_CREATE|os.O_WRONLY, 0644)
+			w, err := os.OpenFile(FlagOutput, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Open file for output writing failed")
 			}
