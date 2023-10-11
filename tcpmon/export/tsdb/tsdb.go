@@ -5,7 +5,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 
@@ -50,8 +49,10 @@ func (e *Exporter) Printf(format string, a ...any) {
 func (e *Exporter) exportMetricTcp(m *tproto.TcpMetric) {
 	ts := m.GetTimestamp()
 	for _, s := range m.GetSockets() {
-		processText := strings.Join(lo.Map(s.GetProcesses(), func(p *tproto.ProcessInfo, _ int) string { return proto.MarshalTextString(p) }), ";")
-		prefix := fmt.Sprintf("tcp,LocalAddr=%s,PeerAddr=%s,Hostname=%s,Process='%v'", s.GetLocalAddr(), s.GetPeerAddr(), e.hostname, processText)
+		processText := strings.Join(lo.Map(s.GetProcesses(), func(p *tproto.ProcessInfo, _ int) string {
+			return fmt.Sprintf("cmd=%s,pid=%v,fd=%v", p.GetName(), p.GetPid(), p.GetFd())
+		}), ";")
+		prefix := fmt.Sprintf("tcp,LocalAddr=%s,PeerAddr=%s,Hostname=%s,Process=\"%v\"", s.GetLocalAddr(), s.GetPeerAddr(), e.hostname, processText)
 
 		for _, timer := range s.GetTimers() {
 			e.Printf("%s Timer=%v,ExpireTimeUs=%v,Retrans=$v %s", prefix, timer.GetName(), timer.GetExpireTimeUs(), timer.GetRetrans(), ts)
