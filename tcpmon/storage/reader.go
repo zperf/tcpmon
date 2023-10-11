@@ -139,7 +139,9 @@ func (r *Reader) Iterate(cb func(buf []byte)) error {
 				return err
 			}
 
-			cb(buf)
+			if len(buf) != 0 {
+				cb(buf)
+			}
 		}
 	}
 
