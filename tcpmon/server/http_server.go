@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 
-	v2 "github.com/zperf/tcpmon/tcpmon/storage/v2"
+	"github.com/zperf/tcpmon/tcpmon/storage"
 	"github.com/zperf/tcpmon/tcpmon/tutils"
 )
 
@@ -44,7 +44,7 @@ func GetBackup(mon *Monitor) func(c *gin.Context) {
 			return
 		}
 
-		r, err := v2.NewDataStoreReader(v2.NewReaderConfig(mon.datastore.BaseDir()).WithSuffix(v2.SealFileSuffix))
+		r, err := storage.NewDataStoreReader(storage.NewReaderConfig(mon.datastore.BaseDir()).WithSuffix(storage.SealFileSuffix))
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, tutils.ErrorJSON(err))
 			return

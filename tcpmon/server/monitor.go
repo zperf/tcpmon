@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/zperf/tcpmon/tcpmon/collector"
-	storagev2 "github.com/zperf/tcpmon/tcpmon/storage/v2"
+	"github.com/zperf/tcpmon/tcpmon/storage"
 )
 
 type Monitor struct {
@@ -20,7 +20,7 @@ type Monitor struct {
 	nicCollector    *collector.NicCollector
 	netCollector    *collector.NetstatCollector
 
-	datastore  *storagev2.DataStore
+	datastore  *storage.DataStore
 	httpServer *http.Server
 	quorum     *Quorum
 }
@@ -29,11 +29,11 @@ type MonitorConfig struct {
 	QuorumPort      int
 	CollectInterval time.Duration
 	HttpListen      string
-	DataStoreConfig storagev2.Config
+	DataStoreConfig storage.Config
 }
 
 func New(monitorConfig MonitorConfig) (*Monitor, error) {
-	ds, err := storagev2.NewDataStore(&monitorConfig.DataStoreConfig)
+	ds, err := storage.NewDataStore(&monitorConfig.DataStoreConfig)
 	if err != nil {
 		return nil, err
 	}

@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/zperf/tcpmon/tcpmon/export/tsdb"
-	storagev2 "github.com/zperf/tcpmon/tcpmon/storage/v2"
+	"github.com/zperf/tcpmon/tcpmon/storage"
 	"github.com/zperf/tcpmon/tcpmon/tproto"
 	"github.com/zperf/tcpmon/tcpmon/tutils"
 )
@@ -42,7 +42,7 @@ var exportCmd = &cobra.Command{
 			log.Fatal().Str("format", FlagExportFormat.String()).Msg("")
 		}
 
-		reader, err := storagev2.NewDataStoreReader(storagev2.NewReaderConfig(baseDir))
+		reader, err := storage.NewDataStoreReader(storage.NewReaderConfig(baseDir))
 		if err != nil {
 			log.Fatal().Err(err).Msg("Open datastore failed")
 		}

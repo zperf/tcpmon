@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/suite"
 
-	v2 "github.com/zperf/tcpmon/tcpmon/storage/v2"
+	"github.com/zperf/tcpmon/tcpmon/storage"
 )
 
 type StorageV2TestSuite struct {
@@ -42,7 +42,7 @@ func (s *StorageV2TestSuite) SetupTest() {
 
 // TestBasic perform basic functional tests
 func (s *StorageV2TestSuite) TestBasic() {
-	ds, err := v2.NewDataStore(v2.NewConfig(s.baseDir).WithFs(s.fs))
+	ds, err := storage.NewDataStore(storage.NewConfig(s.baseDir).WithFs(s.fs))
 	s.Require().NoError(err)
 	defer ds.Close()
 
@@ -57,12 +57,12 @@ func (s *StorageV2TestSuite) TestBasic() {
 }
 
 func (s *StorageV2TestSuite) TestRotateFile() {
-	cfg := v2.NewConfig(s.baseDir).
+	cfg := storage.NewConfig(s.baseDir).
 		WithFs(s.fs).
 		WithMaxSize(10 * (1 << 20)).
 		WithMaxEntriesPerFile(3)
 
-	ds, err := v2.NewDataStore(cfg)
+	ds, err := storage.NewDataStore(cfg)
 	s.Require().NoError(err)
 
 	const toWrite = 10
@@ -74,7 +74,7 @@ func (s *StorageV2TestSuite) TestRotateFile() {
 	}
 	ds.Close()
 
-	r, err := v2.NewDataStoreReader(v2.NewReaderConfig(s.baseDir).WithFs(s.fs))
+	r, err := storage.NewDataStoreReader(storage.NewReaderConfig(s.baseDir).WithFs(s.fs))
 	s.Require().NoError(err)
 
 	count := 0
@@ -92,12 +92,12 @@ func (s *StorageV2TestSuite) TestGetLastestFileNo() {
 	_, err = s.fs.Create(s.baseDir + "/tcpmon-dataf-2.zst")
 	s.Require().NoError(err)
 
-	cfg := v2.NewConfig(s.baseDir).
+	cfg := storage.NewConfig(s.baseDir).
 		WithFs(s.fs).
 		WithMaxSize(10 * (1 << 20)).
 		WithMaxEntriesPerFile(3)
 
-	ds, err := v2.NewDataStore(cfg)
+	ds, err := storage.NewDataStore(cfg)
 	s.Require().NoError(err)
 	defer ds.Close()
 
@@ -133,12 +133,12 @@ func (s *StorageV2TestSuite) TestGetLatestFileNo2() {
 		s.Require().NoError(err)
 	}
 
-	cfg := v2.NewConfig(s.baseDir).
+	cfg := storage.NewConfig(s.baseDir).
 		WithFs(s.fs).
 		WithMaxSize(10 * (1 << 20)).
 		WithMaxEntriesPerFile(3)
 
-	ds, err := v2.NewDataStore(cfg)
+	ds, err := storage.NewDataStore(cfg)
 	s.Require().NoError(err)
 	defer ds.Close()
 

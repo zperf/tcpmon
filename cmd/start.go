@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/zperf/tcpmon/tcpmon/server"
-	storagev2 "github.com/zperf/tcpmon/tcpmon/storage/v2"
+	"github.com/zperf/tcpmon/tcpmon/storage"
 	"github.com/zperf/tcpmon/tcpmon/tutils"
 )
 
@@ -20,7 +20,7 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start monitoring",
 	Run: func(cmd *cobra.Command, args []string) {
-		datastoreConfig := storagev2.NewConfig(viper.GetString("db"))
+		datastoreConfig := storage.NewConfig(viper.GetString("db"))
 
 		m, err := server.New(server.MonitorConfig{
 			CollectInterval: viper.GetDuration("collect-interval"),
