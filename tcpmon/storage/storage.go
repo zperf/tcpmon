@@ -21,6 +21,7 @@ import (
 const DataFilePrefix = "tcpmon-dataf-"
 const SealFileSuffix = ".zst"
 const Version = uint16(0xadde)
+const HeaderSize = 6
 
 type DataStore struct {
 	baseDir string   // database base directory
@@ -346,7 +347,7 @@ func (ds *DataStore) reclaim() {
 }
 
 func (ds *DataStore) newHeader(size int) []byte {
-	buf := make([]byte, 6)
+	buf := make([]byte, HeaderSize)
 	binary.LittleEndian.PutUint16(buf[0:2], Version)      // version
 	binary.LittleEndian.PutUint32(buf[2:6], uint32(size)) // body size
 	return buf

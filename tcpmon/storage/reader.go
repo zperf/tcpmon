@@ -247,9 +247,9 @@ func (r *DataFileReader) Read() ([]byte, error) {
 	return buf, nil
 }
 
-func (r *DataFileReader) ReadHeader() (uint32, error) {
-	buf := make([]byte, 6)
-	_, err := r.reader.Read(buf)
+func ReadHeader(reader io.Reader) (uint32, error) {
+	buf := make([]byte, HeaderSize)
+	_, err := reader.Read(buf)
 	if err != nil {
 		if err == io.EOF {
 			return 0, err
@@ -264,6 +264,10 @@ func (r *DataFileReader) ReadHeader() (uint32, error) {
 
 	size := binary.LittleEndian.Uint32(buf[2:6])
 	return size, nil
+}
+
+func (r *DataFileReader) ReadHeader() (uint32, error) {
+	return ReadHeader(r.reader)
 }
 
 func (r *DataFileReader) Close() {
