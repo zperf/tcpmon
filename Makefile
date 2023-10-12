@@ -3,7 +3,7 @@ BUILD_FLAGS := -trimpath -gcflags "all=-N -l"
 DEV_BUILD_FLAGS := -race
 
 VERSION := $(shell git describe --always --tags | sed 's/^v//g' | awk -F- '{print $$1}')
-RELEASE := $(shell git describe --always --tags | awk -F- '{print $$2".el7"}')
+RELEASE := $(shell git describe --always --tags | awk -F- '{if(!$$2){$$2=0};print $$2".el7"}')
 
 .PHONY: all
 all: build
