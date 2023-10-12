@@ -79,7 +79,7 @@ func init() {
 	startCmd.PersistentFlags().String("cmd-ss-arg", "-4ntipmona", "Parameters when executing 'ss'")
 	startCmd.PersistentFlags().String("cmd-netstat", "/usr/bin/netstat", "The path of 'netstat'")
 	startCmd.PersistentFlags().String("cmd-netstat-arg", "-s", "Parameters when executing 'netstat'")
-	startCmd.PersistentFlags().DurationP("cmd-timeout", "c", time.Second, "Command execution timeout")
+	startCmd.PersistentFlags().DurationP("cmd-timeout", "c", 3*time.Second, "Command execution timeout")
 
 	// db flags
 	startCmd.PersistentFlags().String("db", "/tmp/tcpmon/db", "Database path")
