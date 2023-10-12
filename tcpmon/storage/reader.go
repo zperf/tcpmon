@@ -115,7 +115,7 @@ func (r *Reader) files() ([]string, error) {
 	return files, nil
 }
 
-func (r *Reader) Iterate(cb func(buf []byte)) error {
+func (r *Reader) Iterate(cb func(buf []byte) error) error {
 	files, err := r.files()
 	if err != nil {
 		return err
@@ -130,6 +130,7 @@ func (r *Reader) Iterate(cb func(buf []byte)) error {
 			return err
 		}
 
+		offset := uint64(0)
 		for {
 			buf, err := reader.Read()
 			if err != nil {
@@ -138,9 +139,15 @@ func (r *Reader) Iterate(cb func(buf []byte)) error {
 				}
 				return err
 			}
+			offset += uint64(len(buf))
 
 			if len(buf) != 0 {
-				cb(buf)
+				err = cb(buf)
+				if err != nil {
+					log.Warn().Err(err).Uint64("offset", offset).
+						Msg("Error occurred, skip to the next file")
+					break
+				}
 			}
 		}
 	}
@@ -150,8 +157,9 @@ func (r *Reader) Iterate(cb func(buf []byte)) error {
 
 func (r *Reader) Count() (int, error) {
 	count := 0
-	err := r.Iterate(func(_ []byte) {
+	err := r.Iterate(func(_ []byte) error {
 		count++
+		return nil
 	})
 	return count, err
 }
@@ -251,7 +259,7 @@ func (r *DataFileReader) ReadHeader() (uint32, error) {
 
 	version := binary.LittleEndian.Uint16(buf[0:2])
 	if version != Version {
-		return 0, errors.Newf("invalid version 0x`%x` in header", version)
+		return 0, errors.Newf("invalid version 0x%x in header", version)
 	}
 
 	size := binary.LittleEndian.Uint32(buf[2:6])

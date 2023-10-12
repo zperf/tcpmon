@@ -48,14 +48,15 @@ var exportCmd = &cobra.Command{
 		}
 		defer reader.Close()
 
-		err = reader.Iterate(func(buf []byte) {
+		err = reader.Iterate(func(buf []byte) error {
 			var m tproto.Metric
 			err := proto.Unmarshal(buf, &m)
 			if err != nil {
-				log.Fatal().Err(err).Msg("Unmarshal failed")
+				return err
 			}
 
 			exporter.ExportMetric(&m)
+			return nil
 		})
 		if err != nil {
 			log.Fatal().Err(err).Msg("Read db failed")
