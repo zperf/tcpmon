@@ -14,7 +14,7 @@ func NewConfig(baseDir string) *Config {
 		BaseDir:           baseDir,
 		Fs:                afero.NewOsFs(),
 		MaxSize:           100 * (1 << 20),
-		MaxEntriesPerFile: 500,
+		MaxEntriesPerFile: 1000,
 	}
 }
 

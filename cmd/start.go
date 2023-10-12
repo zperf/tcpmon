@@ -20,13 +20,19 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start monitoring",
 	Run: func(cmd *cobra.Command, args []string) {
-		datastoreConfig := storage.NewConfig(viper.GetString("db"))
+		dsConfig := storage.NewConfig(viper.GetString("db")).
+			WithMaxSize(viper.GetInt64("db-max-size")).
+			WithMaxEntriesPerFile(viper.GetUint32("db-entries-per-file"))
+		log.Info().Int64("MaxSize", dsConfig.MaxSize).
+			Uint32("EntriesPerFile", dsConfig.MaxEntriesPerFile).
+			Str("BaseDir", dsConfig.BaseDir).
+			Msg("Datastore config loaded")
 
 		m, err := server.New(server.MonitorConfig{
 			CollectInterval: viper.GetDuration("collect-interval"),
 			HttpListen:      viper.GetString("listen"),
 			QuorumPort:      viper.GetInt("quorum-port"),
-			DataStoreConfig: *datastoreConfig,
+			DataStoreConfig: *dsConfig,
 		})
 		if err != nil {
 			log.Fatal().Err(err).Msg("Create tcpmon failed")
@@ -77,7 +83,8 @@ func init() {
 
 	// db flags
 	startCmd.PersistentFlags().String("db", "/tmp/tcpmon/db", "Database path")
-	startCmd.PersistentFlags().Uint32("db-max-size", 2000000, "Maximum number of records in the database")
+	startCmd.PersistentFlags().Uint32("db-max-size", 100*(1<<20), "Maximum number of records in the database")
+	startCmd.PersistentFlags().Uint32("db-entries-per-file", 1000, "Maximum number of records in the database")
 	startCmd.PersistentFlags().Duration("db-write-interval", 60*time.Second, "Write interval")
 
 	tutils.FatalIf(viper.BindPFlags(startCmd.PersistentFlags()))
