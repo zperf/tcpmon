@@ -78,9 +78,10 @@ func (s *StorageV2TestSuite) TestRotateFile() {
 	s.Require().NoError(err)
 
 	count := 0
-	err = r.Iterate(func(buf []byte) {
+	err = r.Iterate(func(buf []byte) error {
 		s.Require().Equal(bufSize, len(buf))
 		count++
+		return nil
 	})
 	s.Require().NoError(err)
 	s.Require().Equal(toWrite, count)
