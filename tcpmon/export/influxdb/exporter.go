@@ -1,4 +1,4 @@
-package storage
+package influxdb
 
 import (
 	"bufio"
@@ -13,11 +13,9 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/afero"
 
-	"github.com/zperf/tcpmon/tcpmon/export/influxdb"
+	"github.com/zperf/tcpmon/tcpmon/storage"
 	"github.com/zperf/tcpmon/tcpmon/tproto"
 )
-
-const TimeFormat = "2006-01-02T15:04:05"
 
 var ErrTimePointNotIncluded = errors.New("time point not included in this data file")
 
@@ -206,7 +204,7 @@ work:
 			}
 
 			var builder strings.Builder
-			exporter := influxdb.New(hostname, &builder)
+			exporter := New(hostname, &builder)
 			exporter.ExportMetric(metric)
 
 			m.Lock()
@@ -246,13 +244,13 @@ func (r *FastExporter) doScan() ([]RecordRange, error) {
 		var ra RecordRange
 		var size uint32
 
-		size, err = ReadHeader(r.fh)
+		size, err = storage.ReadHeader(r.fh)
 		if err != nil {
 			break
 		}
 		ra.Header.Offset = offset
-		ra.Header.Len = HeaderSize
-		ra.Body.Offset = offset + HeaderSize
+		ra.Header.Len = storage.HeaderSize
+		ra.Body.Offset = offset + storage.HeaderSize
 		ra.Body.Len = size
 
 		offset, err = r.fh.Seek(int64(size), io.SeekCurrent)

@@ -72,7 +72,8 @@ func (s *StorageV2TestSuite) TestRotateFile() {
 		err := ds.Put(buf)
 		s.Require().NoError(err)
 	}
-	ds.Close()
+	err = ds.Close()
+	s.Require().NoError(err)
 
 	r, err := storage.NewDataStoreReader(storage.NewReaderConfig(s.baseDir).WithFs(s.fs))
 	s.Require().NoError(err)
