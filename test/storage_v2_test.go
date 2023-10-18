@@ -88,7 +88,7 @@ func (s *StorageV2TestSuite) TestRotateFile() {
 	s.Require().Equal(toWrite, count)
 }
 
-func (s *StorageV2TestSuite) TestGetLastestFileNo() {
+func (s *StorageV2TestSuite) TestGetLatestFileNo() {
 	_, err := s.fs.Create(s.baseDir + "/tcpmon-dataf-1")
 	s.Require().NoError(err)
 	_, err = s.fs.Create(s.baseDir + "/tcpmon-dataf-2.zst")
