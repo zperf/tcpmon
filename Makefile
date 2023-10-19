@@ -27,6 +27,11 @@ proto:
 	protoc -Iproto --gogofaster_out=tcpmon/tproto tcpmon.proto
 	sed -i 's/package tcpmon/package tproto/g' tcpmon/tproto/tcpmon.pb.go
 
+.PHONY: gproto
+gproto:
+	mkdir -p tcpmon/gproto
+	protoc --go_out=. --go_opt=Mproto/tcpmon.proto=./tcpmon/gproto proto/tcpmon.proto
+
 .PHONY: check
 check: build
 ifeq (, $(shell which golangci-lint))
