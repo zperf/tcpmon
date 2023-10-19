@@ -12,19 +12,19 @@ import (
 	"github.com/zperf/tcpmon/tcpmon/tutils"
 )
 
-type Exporter struct {
+type LineProtocolExporter struct {
 	hostname string
 	writer   io.Writer
 }
 
-func New(hostname string, writer io.Writer) *Exporter {
-	return &Exporter{
+func New(hostname string, writer io.Writer) *LineProtocolExporter {
+	return &LineProtocolExporter{
 		hostname: hostname,
 		writer:   writer,
 	}
 }
 
-func (e *Exporter) ExportMetric(m *tproto.Metric) {
+func (e *LineProtocolExporter) ExportMetric(m *tproto.Metric) {
 	switch m := m.Body.(type) {
 	case *tproto.Metric_Tcp:
 		e.exportMetricTcp(m.Tcp)
@@ -37,7 +37,7 @@ func (e *Exporter) ExportMetric(m *tproto.Metric) {
 	}
 }
 
-func (e *Exporter) Printf(format string, a ...any) {
+func (e *LineProtocolExporter) Printf(format string, a ...any) {
 	if !strings.HasSuffix(format, "\n") {
 		format += "\n"
 	}
@@ -46,7 +46,7 @@ func (e *Exporter) Printf(format string, a ...any) {
 	tutils.FatalIf(err)
 }
 
-func (e *Exporter) exportMetricTcp(m *tproto.TcpMetric) {
+func (e *LineProtocolExporter) exportMetricTcp(m *tproto.TcpMetric) {
 	ts := m.GetTimestamp()
 	for _, s := range m.GetSockets() {
 		processText := strings.Join(lo.Map(s.GetProcesses(), func(p *tproto.ProcessInfo, _ int) string {
@@ -123,7 +123,7 @@ func (e *Exporter) exportMetricTcp(m *tproto.TcpMetric) {
 	}
 }
 
-func (e *Exporter) exportMetricNic(m *tproto.NicMetric) {
+func (e *LineProtocolExporter) exportMetricNic(m *tproto.NicMetric) {
 	ts := m.GetTimestamp()
 
 	for _, i := range m.GetIfaces() {
@@ -144,7 +144,7 @@ func (e *Exporter) exportMetricNic(m *tproto.NicMetric) {
 	}
 }
 
-func (e *Exporter) exportMetricNet(m *tproto.NetstatMetric) {
+func (e *LineProtocolExporter) exportMetricNet(m *tproto.NetstatMetric) {
 	ts := m.GetTimestamp()
 	prefix := fmt.Sprintf("net,Hostname=%v", e.hostname)
 
