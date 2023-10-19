@@ -20,7 +20,7 @@ type StorageV2TestSuite struct {
 
 func TestStorageV2(t *testing.T) {
 	s := &StorageV2TestSuite{
-		fs:      afero.NewBasePathFs(afero.NewOsFs(), "./tmp"),
+		fs:      afero.NewBasePathFs(afero.NewMemMapFs(), "./tmp"),
 		baseDir: "db",
 	}
 
