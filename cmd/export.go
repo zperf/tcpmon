@@ -52,6 +52,18 @@ var exportCmd = &cobra.Command{
 			writer = fh
 		}
 
+		token := viper.GetString("export-token")
+		exportOption := influxdb.ExportOptions{
+			Hostname:  hostname,
+			Target:    target,
+			ShowOnly:  showOnly,
+			WriteDb:   token != "",
+			Org:       viper.GetString("export-org"),
+			Bucket:    viper.GetString("export-bucket"),
+			Token:     token,
+			DbAddress: viper.GetString("export-db"),
+		}
+
 		if s.IsDir() {
 			files, err := os.ReadDir(path)
 			if err != nil {
@@ -68,7 +80,7 @@ var exportCmd = &cobra.Command{
 					continue
 				}
 
-				err = exportFile(filepath.Join(path, f.Name()), writer, hostname, target, showOnly)
+				err = exportFile(filepath.Join(path, f.Name()), writer, &exportOption)
 				if err != nil {
 					if errors.Is(err, influxdb.ErrTimePointNotIncluded) {
 						log.Info().Str("file", f.Name()).
@@ -86,7 +98,7 @@ var exportCmd = &cobra.Command{
 				}
 			}
 		} else {
-			err = exportFile(path, writer, hostname, target, showOnly)
+			err = exportFile(path, writer, &exportOption)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Export single data file failed")
 			}
@@ -94,14 +106,14 @@ var exportCmd = &cobra.Command{
 	},
 }
 
-func exportFile(path string, w io.Writer, hostname string, target time.Time, showOnly bool) error {
+func exportFile(path string, w io.Writer, options *influxdb.ExportOptions) error {
 	exporter, err := influxdb.NewFastExporter(path, nil)
 	if err != nil {
 		return err
 	}
 	defer exporter.Close()
 
-	return exporter.Export(w, &influxdb.ExportOptions{Hostname: hostname, Target: target, ShowOnly: showOnly})
+	return exporter.Export(w, options)
 }
 
 func init() {
@@ -118,6 +130,23 @@ func init() {
 	exportCmd.Flags().BoolP("show", "p", false,
 		"Print timestamp only")
 	tutils.FatalIf(viper.BindPFlag("export-show", exportCmd.Flags().Lookup("show")))
+
+	// for db
+	exportCmd.Flags().StringP("bucket", "b", "",
+		"InfluxDB bucket name")
+	tutils.FatalIf(viper.BindPFlag("export-bucket", exportCmd.Flags().Lookup("bucket")))
+
+	exportCmd.Flags().String("org", "",
+		"InfluxDB org name")
+	tutils.FatalIf(viper.BindPFlag("export-org", exportCmd.Flags().Lookup("org")))
+
+	exportCmd.Flags().String("token", "",
+		"InfluxDB connection token")
+	tutils.FatalIf(viper.BindPFlag("export-token", exportCmd.Flags().Lookup("token")))
+
+	exportCmd.Flags().String("db", "http://127.0.0.1:8086",
+		"InfluxDB connection address")
+	tutils.FatalIf(viper.BindPFlag("export-db", exportCmd.Flags().Lookup("db")))
 
 	rootCmd.AddCommand(exportCmd)
 }

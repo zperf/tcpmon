@@ -102,6 +102,12 @@ type ExportOptions struct {
 	Hostname string
 	Target   time.Time
 	ShowOnly bool
+
+	WriteDb   bool
+	Org       string
+	Bucket    string
+	Token     string
+	DbAddress string
 }
 
 func (r *FastExporter) Export(w io.Writer, option *ExportOptions) error {
@@ -166,10 +172,10 @@ func (r *FastExporter) Export(w io.Writer, option *ExportOptions) error {
 	defer close(jobs)
 	stop := make(chan struct{})
 
-	workerNum := runtime.NumCPU() - 4
+	workerNum := runtime.NumCPU()
 	exit.Add(workerNum)
 	for i := 0; i < workerNum; i++ {
-		go r.exportWorker(w, &writerMutex, jobs, &exit, stop, option.Hostname)
+		go r.exportWorker(w, &writerMutex, jobs, &exit, stop, *option)
 	}
 
 	for _, rr := range ra {
@@ -182,7 +188,7 @@ func (r *FastExporter) Export(w io.Writer, option *ExportOptions) error {
 }
 
 func (r *FastExporter) exportWorker(w io.Writer, m *sync.Mutex, jobs <-chan RecordRange, exit *sync.WaitGroup,
-	stop <-chan struct{}, hostname string) {
+	stop <-chan struct{}, option ExportOptions) {
 work:
 	for {
 		select {
@@ -203,22 +209,42 @@ work:
 				log.Fatal().Err(err).Msg("Unmarshal failed")
 			}
 
-			var builder strings.Builder
-			exporter := New(hostname, &builder)
-			exporter.ExportMetric(metric)
+			if option.WriteDb {
+				// use influxdb client write metrics to db
+				conn := NewImporter(&ImportOption{
+					Bucket:   option.Bucket,
+					Org:      option.Org,
+					Token:    option.Token,
+					Address:  option.DbAddress,
+					Hostname: option.Hostname,
+				})
 
-			m.Lock()
-			writer := bufio.NewWriter(w)
-			_, err = writer.WriteString(builder.String())
-			if err != nil {
-				log.Fatal().Err(err).Msg("Write failed")
-			}
+				err = conn.Submit(metric)
+				if err != nil {
+					conn.Close()
+					log.Fatal().Err(err).Msg("Submit failed")
+				}
+				conn.Close()
 
-			err = writer.Flush()
-			if err != nil {
-				log.Fatal().Err(err).Msg("Flush failed")
+			} else {
+				// export metrics to txt file with line protocol
+				var builder strings.Builder
+				exporter := New(option.Hostname, &builder)
+				exporter.ExportMetric(metric)
+
+				m.Lock()
+				writer := bufio.NewWriter(w)
+				_, err = writer.WriteString(builder.String())
+				if err != nil {
+					log.Fatal().Err(err).Msg("Write failed")
+				}
+
+				err = writer.Flush()
+				if err != nil {
+					log.Fatal().Err(err).Msg("Flush failed")
+				}
+				m.Unlock()
 			}
-			m.Unlock()
 
 		case <-time.After(time.Second):
 			log.Info().Msg("Get job timeout")
