@@ -39,7 +39,7 @@ var exportCmd = &cobra.Command{
 		var target time.Time
 		targetTime := viper.GetString("export-target-time")
 		if targetTime != "" {
-			target, err = time.Parse(tutils.TimeFormat, targetTime)
+			target, err = time.ParseInLocation(tutils.TimeFormat, targetTime, time.Local)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Invalid target time")
 			}
