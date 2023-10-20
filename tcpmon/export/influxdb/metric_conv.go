@@ -141,39 +141,39 @@ func (c *MetricConv) Tcp(metric *tproto.TcpMetric) []*write.Point {
 		points = append(points, p)
 
 		p = write.NewPoint("tcp", tags,
-			map[string]interface{}{"RmemAlloc": s.Skmem.RmemAlloc},
+			map[string]interface{}{"RmemAlloc": s.GetSkmem().GetRmemAlloc()},
 			ts)
 		points = append(points, p)
 		p = write.NewPoint("tcp", tags,
-			map[string]interface{}{"RcvBuf": s.Skmem.RcvBuf},
+			map[string]interface{}{"RcvBuf": s.GetSkmem().GetRcvBuf()},
 			ts)
 		points = append(points, p)
 		p = write.NewPoint("tcp", tags,
-			map[string]interface{}{"WmemAlloc": s.Skmem.WmemAlloc},
+			map[string]interface{}{"WmemAlloc": s.GetSkmem().GetWmemAlloc()},
 			ts)
 		points = append(points, p)
 		p = write.NewPoint("tcp", tags,
-			map[string]interface{}{"SndBuf": s.Skmem.SndBuf},
+			map[string]interface{}{"SndBuf": s.GetSkmem().GetSndBuf()},
 			ts)
 		points = append(points, p)
 		p = write.NewPoint("tcp", tags,
-			map[string]interface{}{"FwdAlloc": s.Skmem.FwdAlloc},
+			map[string]interface{}{"FwdAlloc": s.GetSkmem().GetFwdAlloc()},
 			ts)
 		points = append(points, p)
 		p = write.NewPoint("tcp", tags,
-			map[string]interface{}{"WmemQueued": s.Skmem.WmemQueued},
+			map[string]interface{}{"WmemQueued": s.GetSkmem().GetWmemQueued()},
 			ts)
 		points = append(points, p)
 		p = write.NewPoint("tcp", tags,
-			map[string]interface{}{"OptMem": s.Skmem.OptMem},
+			map[string]interface{}{"OptMem": s.GetSkmem().GetOptMem()},
 			ts)
 		points = append(points, p)
 		p = write.NewPoint("tcp", tags,
-			map[string]interface{}{"BackLog": s.Skmem.BackLog},
+			map[string]interface{}{"BackLog": s.GetSkmem().GetBackLog()},
 			ts)
 		points = append(points, p)
 		p = write.NewPoint("tcp", tags,
-			map[string]interface{}{"SockDrop": s.Skmem.SockDrop},
+			map[string]interface{}{"SockDrop": s.GetSkmem().GetSockDrop()},
 			ts)
 		points = append(points, p)
 
