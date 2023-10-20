@@ -90,7 +90,7 @@ var exportCmd = &cobra.Command{
 				if err != nil {
 					if errors.Is(err, influxdb.ErrTimePointNotIncluded) {
 						if exportOption.Bar != nil {
-							bar.Describe(fmt.Sprintf("Ignore %s", path))
+							bar.Describe(fmt.Sprintf("Ignore %s", f.Name()))
 						} else {
 							log.Info().Str("file", f.Name()).
 								Msg("File ignored since there is no target time point in it")
