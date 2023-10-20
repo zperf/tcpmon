@@ -9,7 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 
-	"github.com/zperf/tcpmon/tcpmon/tproto"
+	"github.com/zperf/tcpmon/tcpmon/gproto"
 )
 
 type MetricConv struct {
@@ -20,13 +20,13 @@ func NewMetricConv(hostname string) *MetricConv {
 	return &MetricConv{Hostname: hostname}
 }
 
-func (c *MetricConv) Metric(metric *tproto.Metric) (int64, []*write.Point) {
+func (c *MetricConv) Metric(metric *gproto.Metric) (int64, []*write.Point) {
 	switch m := metric.Body.(type) {
-	case *tproto.Metric_Tcp:
+	case *gproto.Metric_Tcp:
 		return m.Tcp.Timestamp, c.Tcp(m.Tcp)
-	case *tproto.Metric_Net:
+	case *gproto.Metric_Net:
 		return m.Net.Timestamp, c.Net(m.Net)
-	case *tproto.Metric_Nic:
+	case *gproto.Metric_Nic:
 		return m.Nic.Timestamp, c.Nic(m.Nic)
 	default:
 		log.Fatal().Msg("Unknown metric type")
@@ -34,7 +34,7 @@ func (c *MetricConv) Metric(metric *tproto.Metric) (int64, []*write.Point) {
 	return 0, nil
 }
 
-func (c *MetricConv) Nic(metric *tproto.NicMetric) []*write.Point {
+func (c *MetricConv) Nic(metric *gproto.NicMetric) []*write.Point {
 	ts := time.Unix(metric.GetTimestamp(), 0)
 	points := make([]*write.Point, 0)
 
@@ -91,7 +91,7 @@ func (c *MetricConv) Nic(metric *tproto.NicMetric) []*write.Point {
 	return points
 }
 
-func (c *MetricConv) Tcp(metric *tproto.TcpMetric) []*write.Point {
+func (c *MetricConv) Tcp(metric *gproto.TcpMetric) []*write.Point {
 	ts := time.Unix(metric.GetTimestamp(), 0)
 	points := make([]*write.Point, 0)
 
@@ -102,7 +102,7 @@ func (c *MetricConv) Tcp(metric *tproto.TcpMetric) []*write.Point {
 			"Hostname":  c.Hostname,
 		}
 
-		processText := strings.Join(lo.Map(s.GetProcesses(), func(p *tproto.ProcessInfo, _ int) string {
+		processText := strings.Join(lo.Map(s.GetProcesses(), func(p *gproto.ProcessInfo, _ int) string {
 			return fmt.Sprintf("cmd:%s;pid:%v;fd:%v", p.GetName(), p.GetPid(), p.GetFd())
 		}), ";")
 		if processText != "" {
@@ -346,7 +346,7 @@ func (c *MetricConv) Tcp(metric *tproto.TcpMetric) []*write.Point {
 	return points
 }
 
-func (c *MetricConv) Net(metric *tproto.NetstatMetric) []*write.Point {
+func (c *MetricConv) Net(metric *gproto.NetstatMetric) []*write.Point {
 	ts := time.Unix(metric.GetTimestamp(), 0)
 	points := make([]*write.Point, 0)
 

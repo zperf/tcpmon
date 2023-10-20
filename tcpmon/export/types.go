@@ -1,9 +1,7 @@
 package export
 
-import (
-	"github.com/zperf/tcpmon/tcpmon/tproto"
-)
+import "github.com/zperf/tcpmon/tcpmon/gproto"
 
 type Exporter interface {
-	ExportMetric(metric *tproto.Metric)
+	ExportMetric(metric *gproto.Metric)
 }

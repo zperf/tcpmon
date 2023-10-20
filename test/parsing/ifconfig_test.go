@@ -4,8 +4,8 @@ import (
 	"strings"
 	"time"
 
+	. "github.com/zperf/tcpmon/tcpmon/gproto"
 	. "github.com/zperf/tcpmon/tcpmon/parsing"
-	. "github.com/zperf/tcpmon/tcpmon/tproto"
 )
 
 func (s *ParsingTestSuite) TestParseIfconfig() {

@@ -8,8 +8,8 @@ import (
 	"github.com/go-cmd/cmd"
 	"github.com/gogo/protobuf/proto"
 
+	"github.com/zperf/tcpmon/tcpmon/gproto"
 	"github.com/zperf/tcpmon/tcpmon/parsing"
-	"github.com/zperf/tcpmon/tcpmon/tproto"
 )
 
 type NicCollector struct{ config *Config }
@@ -24,7 +24,7 @@ func (m *NicCollector) Collect(now time.Time) ([]byte, error) {
 		return nil, err
 	}
 
-	metric := &tproto.Metric{Body: &tproto.Metric_Nic{Nic: r}}
+	metric := &gproto.Metric{Body: &gproto.Metric_Nic{Nic: r}}
 	val, err := proto.Marshal(metric)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -33,7 +33,7 @@ func (m *NicCollector) Collect(now time.Time) ([]byte, error) {
 	return val, nil
 }
 
-func (m *NicCollector) doCollect(now time.Time) (*tproto.NicMetric, error) {
+func (m *NicCollector) doCollect(now time.Time) (*gproto.NicMetric, error) {
 	c := cmd.NewCmd(m.config.PathIfconfig)
 	ctx, cancel := context.WithTimeout(context.Background(), m.config.Timeout)
 	defer cancel()
@@ -42,8 +42,8 @@ func (m *NicCollector) doCollect(now time.Time) (*tproto.NicMetric, error) {
 	case <-ctx.Done():
 		return nil, errors.Wrap(ctx.Err(), "ifconfig timeout")
 	case st := <-c.Start():
-		var nics tproto.NicMetric
-		nics.Type = tproto.MetricType_NIC
+		var nics gproto.NicMetric
+		nics.Type = gproto.MetricType_NIC
 		nics.Timestamp = now.Unix()
 
 		parsing.ParseIfconfigOutput(&nics, st.Stdout)

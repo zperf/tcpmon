@@ -7,8 +7,8 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/gogo/protobuf/proto"
 
+	"github.com/zperf/tcpmon/tcpmon/gproto"
 	"github.com/zperf/tcpmon/tcpmon/parsing"
-	"github.com/zperf/tcpmon/tcpmon/tproto"
 )
 
 const procNet = "/proc/net/"
@@ -25,15 +25,15 @@ func (m *NetstatCollector) Collect(now time.Time) ([]byte, error) {
 		return nil, err
 	}
 
-	buf, err := proto.Marshal(&tproto.Metric{Body: &tproto.Metric_Net{Net: r}})
+	buf, err := proto.Marshal(&gproto.Metric{Body: &gproto.Metric_Net{Net: r}})
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	return buf, nil
 }
 
-func (m *NetstatCollector) doCollect(now time.Time) (*tproto.NetstatMetric, error) {
-	var metric tproto.NetstatMetric
+func (m *NetstatCollector) doCollect(now time.Time) (*gproto.NetstatMetric, error) {
+	var metric gproto.NetstatMetric
 	metric.Timestamp = now.Unix()
 
 	err := CollectProc("snmp", &metric)
@@ -49,7 +49,7 @@ func (m *NetstatCollector) doCollect(now time.Time) (*tproto.NetstatMetric, erro
 	return &metric, nil
 }
 
-func CollectProc(t string, metric *tproto.NetstatMetric) error {
+func CollectProc(t string, metric *gproto.NetstatMetric) error {
 	path := procNet + t
 
 	fd, err := os.Open(path)

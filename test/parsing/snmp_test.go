@@ -4,8 +4,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/zperf/tcpmon/tcpmon/gproto"
 	"github.com/zperf/tcpmon/tcpmon/parsing"
-	"github.com/zperf/tcpmon/tcpmon/tproto"
 )
 
 func (s *ParsingTestSuite) TestParseSnmp() {
@@ -13,7 +13,7 @@ func (s *ParsingTestSuite) TestParseSnmp() {
 	s.Require().NoError(err)
 
 	snmp := string(buf)
-	var m tproto.NetstatMetric
+	var m gproto.NetstatMetric
 	err = parsing.ParseSnmp(strings.NewReader(snmp), &m)
 	s.Require().NoError(err)
 

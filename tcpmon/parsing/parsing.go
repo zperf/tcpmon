@@ -6,10 +6,10 @@ import (
 
 	"github.com/cockroachdb/errors"
 
-	"github.com/zperf/tcpmon/tcpmon/tproto"
+	"github.com/zperf/tcpmon/tcpmon/gproto"
 )
 
-func parseSnmpOrNetstat(r io.Reader, m *tproto.NetstatMetric, parseFn func(string, string, *tproto.NetstatMetric) error) error {
+func parseSnmpOrNetstat(r io.Reader, m *gproto.NetstatMetric, parseFn func(string, string, *gproto.NetstatMetric) error) error {
 	lines := make([]string, 2)
 	p := 0
 

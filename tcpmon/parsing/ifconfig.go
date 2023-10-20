@@ -3,18 +3,18 @@ package parsing
 import (
 	"strings"
 
-	"github.com/zperf/tcpmon/tcpmon/tproto"
+	"github.com/zperf/tcpmon/tcpmon/gproto"
 	"github.com/zperf/tcpmon/tcpmon/tutils"
 )
 
-func ParseIfconfigOutput(nics *tproto.NicMetric, out []string) {
-	r := &tproto.IfaceMetric{}
+func ParseIfconfigOutput(nics *gproto.NicMetric, out []string) {
+	r := &gproto.IfaceMetric{}
 	for _, line := range out {
 		if strings.Contains(line, ": flags=") {
 			fields := strings.FieldsFunc(line, func(c rune) bool {
 				return c == ':'
 			})
-			r = &tproto.IfaceMetric{}
+			r = &gproto.IfaceMetric{}
 			r.Name = fields[0]
 		} else if strings.Contains(line, "RX errors ") {
 			fields := strings.Fields(line)

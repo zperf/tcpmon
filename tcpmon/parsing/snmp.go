@@ -8,14 +8,14 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog/log"
 
-	"github.com/zperf/tcpmon/tcpmon/tproto"
+	"github.com/zperf/tcpmon/tcpmon/gproto"
 )
 
-func ParseSnmp(r io.Reader, m *tproto.NetstatMetric) error {
+func ParseSnmp(r io.Reader, m *gproto.NetstatMetric) error {
 	return parseSnmpOrNetstat(r, m, ParseSnmpLine)
 }
 
-func ParseSnmpLine(fieldStr string, valueStr string, m *tproto.NetstatMetric) error {
+func ParseSnmpLine(fieldStr string, valueStr string, m *gproto.NetstatMetric) error {
 	t := parseProcStatType(fieldStr)
 	if t != parseProcStatType(valueStr) {
 		log.Fatal().Str("title", fieldStr).Str("value", valueStr).

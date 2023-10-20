@@ -9,13 +9,13 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
-	"github.com/gogo/protobuf/proto"
 	"github.com/rs/zerolog/log"
 	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/afero"
+	proto2 "google.golang.org/protobuf/proto"
 
+	"github.com/zperf/tcpmon/tcpmon/gproto"
 	"github.com/zperf/tcpmon/tcpmon/storage"
-	"github.com/zperf/tcpmon/tcpmon/tproto"
 )
 
 var ErrTimePointNotIncluded = errors.New("time point not included in this data file")
@@ -77,22 +77,22 @@ func (r *FastExporter) ReadRange(ra Range) ([]byte, error) {
 	return r.ReadAt(ra.Offset, ra.Len)
 }
 
-func (r *FastExporter) UnmarshalMetric(buf []byte) (*tproto.Metric, error) {
-	var m tproto.Metric
-	err := proto.Unmarshal(buf, &m)
+func (r *FastExporter) UnmarshalMetric(buf []byte) (*gproto.Metric, error) {
+	var m gproto.Metric
+	err := proto2.Unmarshal(buf, &m)
 	if err != nil {
 		return nil, errors.Wrap(err, "parse failed")
 	}
 	return &m, nil
 }
 
-func getTimestamp(m *tproto.Metric) (time.Time, error) {
+func getTimestamp(m *gproto.Metric) (time.Time, error) {
 	switch m := m.Body.(type) {
-	case *tproto.Metric_Tcp:
+	case *gproto.Metric_Tcp:
 		return time.Unix(m.Tcp.GetTimestamp(), 0), nil
-	case *tproto.Metric_Nic:
+	case *gproto.Metric_Nic:
 		return time.Unix(m.Nic.GetTimestamp(), 0), nil
-	case *tproto.Metric_Net:
+	case *gproto.Metric_Net:
 		return time.Unix(m.Net.GetTimestamp(), 0), nil
 	default:
 		return time.Time{}, errors.New("unknown metric type")
@@ -185,7 +185,10 @@ func (r *FastExporter) Export(w io.Writer, option *ExportOptions) error {
 
 	for _, rr := range ra {
 		if option.Bar != nil {
-			option.Bar.Add(1)
+			err = option.Bar.Add(1)
+			if err != nil {
+				log.Warn().Err(err).Msg("Add progress bar failed")
+			}
 		}
 		jobs <- rr
 	}

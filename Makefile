@@ -17,15 +17,9 @@ build-linux:
 	GOOS=linux go build $(DEV_BUILD_FLAGS) $(BUILD_FLAGS) -o bin/tcpmon main.go
 
 .PHONY: release
-release: proto
+release: gproto
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build $(BUILD_FLAGS) -o bin/x86_64/tcpmon github.com/zperf/tcpmon
 	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build $(BUILD_FLAGS) -o bin/aarch64/tcpmon github.com/zperf/tcpmon
-
-.PHONY: proto
-proto:
-	mkdir -p tcpmon/tproto
-	protoc -Iproto --gogofaster_out=tcpmon/tproto tcpmon.proto
-	sed -i 's/package tcpmon/package tproto/g' tcpmon/tproto/tcpmon.pb.go
 
 .PHONY: gproto
 gproto:

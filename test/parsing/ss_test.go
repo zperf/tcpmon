@@ -7,8 +7,8 @@ import (
 
 	"github.com/samber/lo"
 
+	. "github.com/zperf/tcpmon/tcpmon/gproto"
 	. "github.com/zperf/tcpmon/tcpmon/parsing"
-	. "github.com/zperf/tcpmon/tcpmon/tproto"
 	. "github.com/zperf/tcpmon/tcpmon/tutils"
 )
 

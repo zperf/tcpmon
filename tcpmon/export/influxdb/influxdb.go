@@ -8,7 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 
-	"github.com/zperf/tcpmon/tcpmon/tproto"
+	"github.com/zperf/tcpmon/tcpmon/gproto"
 	"github.com/zperf/tcpmon/tcpmon/tutils"
 )
 
@@ -24,13 +24,13 @@ func New(hostname string, writer io.Writer) *LineProtocolExporter {
 	}
 }
 
-func (e *LineProtocolExporter) ExportMetric(m *tproto.Metric) {
+func (e *LineProtocolExporter) ExportMetric(m *gproto.Metric) {
 	switch m := m.Body.(type) {
-	case *tproto.Metric_Tcp:
+	case *gproto.Metric_Tcp:
 		e.exportMetricTcp(m.Tcp)
-	case *tproto.Metric_Net:
+	case *gproto.Metric_Net:
 		e.exportMetricNet(m.Net)
-	case *tproto.Metric_Nic:
+	case *gproto.Metric_Nic:
 		e.exportMetricNic(m.Nic)
 	default:
 		log.Fatal().Msg("Unknown metric type")
@@ -46,10 +46,10 @@ func (e *LineProtocolExporter) Printf(format string, a ...any) {
 	tutils.FatalIf(err)
 }
 
-func (e *LineProtocolExporter) exportMetricTcp(m *tproto.TcpMetric) {
+func (e *LineProtocolExporter) exportMetricTcp(m *gproto.TcpMetric) {
 	ts := m.GetTimestamp()
 	for _, s := range m.GetSockets() {
-		processText := strings.Join(lo.Map(s.GetProcesses(), func(p *tproto.ProcessInfo, _ int) string {
+		processText := strings.Join(lo.Map(s.GetProcesses(), func(p *gproto.ProcessInfo, _ int) string {
 			return fmt.Sprintf("cmd:%s;pid:%v;fd:%v", p.GetName(), p.GetPid(), p.GetFd())
 		}), ";")
 		var prefix string
@@ -123,7 +123,7 @@ func (e *LineProtocolExporter) exportMetricTcp(m *tproto.TcpMetric) {
 	}
 }
 
-func (e *LineProtocolExporter) exportMetricNic(m *tproto.NicMetric) {
+func (e *LineProtocolExporter) exportMetricNic(m *gproto.NicMetric) {
 	ts := m.GetTimestamp()
 
 	for _, i := range m.GetIfaces() {
@@ -144,7 +144,7 @@ func (e *LineProtocolExporter) exportMetricNic(m *tproto.NicMetric) {
 	}
 }
 
-func (e *LineProtocolExporter) exportMetricNet(m *tproto.NetstatMetric) {
+func (e *LineProtocolExporter) exportMetricNet(m *gproto.NetstatMetric) {
 	ts := m.GetTimestamp()
 	prefix := fmt.Sprintf("net,Hostname=%v", e.hostname)
 

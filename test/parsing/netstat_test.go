@@ -4,8 +4,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/zperf/tcpmon/tcpmon/gproto"
 	"github.com/zperf/tcpmon/tcpmon/parsing"
-	"github.com/zperf/tcpmon/tcpmon/tproto"
 )
 
 func (s *ParsingTestSuite) TestParseNetstat() {
@@ -13,7 +13,7 @@ func (s *ParsingTestSuite) TestParseNetstat() {
 	s.Require().NoError(err)
 
 	netstat := string(buf)
-	var m tproto.NetstatMetric
+	var m gproto.NetstatMetric
 	err = parsing.ParseNetstat(strings.NewReader(netstat), &m)
 	s.Require().NoError(err)
 

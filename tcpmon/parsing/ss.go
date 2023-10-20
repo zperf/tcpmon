@@ -7,31 +7,31 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/umisama/go-regexpcache"
 
-	"github.com/zperf/tcpmon/tcpmon/tproto"
+	"github.com/zperf/tcpmon/tcpmon/gproto"
 	"github.com/zperf/tcpmon/tcpmon/tutils"
 )
 
-var socketStateMap map[string]tproto.SocketState
+var socketStateMap map[string]gproto.SocketState
 
 func init() {
-	socketStateMap = map[string]tproto.SocketState{
-		"ESTAB":      tproto.SocketState_TCP_ESTABLISHED,
-		"SYN-SENT":   tproto.SocketState_TCP_SYN_SENT,
-		"SYN-RECV":   tproto.SocketState_TCP_SYN_RECV,
-		"FIN-WAIT-1": tproto.SocketState_TCP_FIN_WAIT1,
-		"FIN-WAIT-2": tproto.SocketState_TCP_FIN_WAIT2,
-		"TIME-WAIT":  tproto.SocketState_TCP_TIME_WAIT,
-		"UNCONN":     tproto.SocketState_TCP_CLOSE,
-		"CLOSE-WAIT": tproto.SocketState_TCP_CLOSE_WAIT,
-		"LAST-ACK":   tproto.SocketState_TCP_LAST_ACK,
-		"LISTEN":     tproto.SocketState_TCP_LISTEN,
-		"CLOSING":    tproto.SocketState_TCP_CLOSING,
+	socketStateMap = map[string]gproto.SocketState{
+		"ESTAB":      gproto.SocketState_TCP_ESTABLISHED,
+		"SYN-SENT":   gproto.SocketState_TCP_SYN_SENT,
+		"SYN-RECV":   gproto.SocketState_TCP_SYN_RECV,
+		"FIN-WAIT-1": gproto.SocketState_TCP_FIN_WAIT1,
+		"FIN-WAIT-2": gproto.SocketState_TCP_FIN_WAIT2,
+		"TIME-WAIT":  gproto.SocketState_TCP_TIME_WAIT,
+		"UNCONN":     gproto.SocketState_TCP_CLOSE,
+		"CLOSE-WAIT": gproto.SocketState_TCP_CLOSE_WAIT,
+		"LAST-ACK":   gproto.SocketState_TCP_LAST_ACK,
+		"LISTEN":     gproto.SocketState_TCP_LISTEN,
+		"CLOSING":    gproto.SocketState_TCP_CLOSING,
 	}
 }
 
 // ToPbState converts string to pb enum
 // From https://sourcegraph.com/github.com/shemminger/iproute2/-/blob/misc/ss.c?L1397
-func ToPbState(s string) tproto.SocketState {
+func ToPbState(s string) gproto.SocketState {
 	st, ok := socketStateMap[s]
 	if !ok {
 		log.Fatal().Err(errors.Newf("unknown socket state %v", s)).Msg("failed to convert str to socket state")
@@ -52,7 +52,7 @@ func isRate(s string) bool {
 	}
 }
 
-func setRate(m *tproto.SocketMetric, field string, value float64) {
+func setRate(m *gproto.SocketMetric, field string, value float64) {
 	switch field {
 	case "pacing_rate":
 		m.PacingRate = value
@@ -65,7 +65,7 @@ func setRate(m *tproto.SocketMetric, field string, value float64) {
 	}
 }
 
-func setMetric(m *tproto.SocketMetric, field string) {
+func setMetric(m *gproto.SocketMetric, field string) {
 	p := strings.IndexRune(field, ':')
 	if p == -1 {
 		log.Fatal().Str("field", field).Msg("invalid field")
@@ -172,7 +172,7 @@ func setMetric(m *tproto.SocketMetric, field string) {
 	}
 }
 
-func parseInfos(m *tproto.SocketMetric, s string) {
+func parseInfos(m *gproto.SocketMetric, s string) {
 	p := strings.Index(s, ":(")
 	if p == -1 {
 		log.Fatal().Str("field", s).Msg("parse failed")
@@ -183,7 +183,7 @@ func parseInfos(m *tproto.SocketMetric, s string) {
 		fields := strings.FieldsFunc(s[p+2:len(s)-1], func(r rune) bool {
 			return ',' == r
 		})
-		skmem := tproto.SocketMemoryUsage{}
+		skmem := gproto.SocketMemoryUsage{}
 		skmem.RmemAlloc, _ = tutils.ParseUint32(strings.TrimPrefix(fields[0], "r"))
 		skmem.RcvBuf, _ = tutils.ParseUint32(strings.TrimPrefix(fields[1], "rb"))
 		skmem.WmemAlloc, _ = tutils.ParseUint32(strings.TrimPrefix(fields[2], "t"))
@@ -200,7 +200,7 @@ func parseInfos(m *tproto.SocketMetric, s string) {
 		fields := strings.FieldsFunc(s[p+2:len(s)-1], func(r rune) bool {
 			return ',' == r
 		})
-		t := &tproto.TimerInfo{}
+		t := &gproto.TimerInfo{}
 		t.Name = fields[0]
 		if len(fields) == 3 {
 			if strings.Contains(fields[1], "min") && strings.HasSuffix(fields[1], "sec") {
@@ -224,7 +224,7 @@ func parseInfos(m *tproto.SocketMetric, s string) {
 	} else if name == "users" {
 		fields := strings.Split(s[p+3:len(s)-2], "),(")
 		for _, field := range fields {
-			p := &tproto.ProcessInfo{}
+			p := &gproto.ProcessInfo{}
 			f := strings.Split(field, ",")
 			p.Name = strings.Trim(f[0], "\"")
 			p.Pid, _ = tutils.ParseUint32(strings.TrimPrefix(f[1], "pid="))
@@ -234,7 +234,7 @@ func parseInfos(m *tproto.SocketMetric, s string) {
 	}
 }
 
-func ParseSS(t *tproto.TcpMetric, out []string) {
+func ParseSS(t *gproto.TcpMetric, out []string) {
 	if len(out) == 0 {
 		log.Fatal().Msg("Command 'ss' outputs empty")
 		return
@@ -245,7 +245,7 @@ func ParseSS(t *tproto.TcpMetric, out []string) {
 		out = out[1:]
 	}
 
-	s := &tproto.SocketMetric{}
+	s := &gproto.SocketMetric{}
 	for _, line := range out {
 		fields := strings.Fields(line)
 
@@ -257,7 +257,7 @@ func ParseSS(t *tproto.TcpMetric, out []string) {
 		}
 
 		if exist {
-			s = &tproto.SocketMetric{}
+			s = &gproto.SocketMetric{}
 			s.State = ToPbState(fields[0])
 			m, _ := tutils.ParseUint32(fields[1])
 			s.RecvQ = m

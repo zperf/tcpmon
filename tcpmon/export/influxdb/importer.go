@@ -6,7 +6,7 @@ import (
 	"github.com/cockroachdb/errors"
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 
-	"github.com/zperf/tcpmon/tcpmon/tproto"
+	"github.com/zperf/tcpmon/tcpmon/gproto"
 )
 
 type Importer struct {
@@ -37,7 +37,7 @@ func (im *Importer) Close() {
 	}
 }
 
-func (im *Importer) Submit(metric *tproto.Metric) error {
+func (im *Importer) Submit(metric *gproto.Metric) error {
 	writeAPI := im.client.WriteAPI(im.option.Org, im.option.Bucket)
 	errCh := writeAPI.Errors()
 	conv := NewMetricConv(im.option.Hostname)

@@ -8,8 +8,8 @@ import (
 	"github.com/go-cmd/cmd"
 	"github.com/gogo/protobuf/proto"
 
+	"github.com/zperf/tcpmon/tcpmon/gproto"
 	"github.com/zperf/tcpmon/tcpmon/parsing"
-	"github.com/zperf/tcpmon/tcpmon/tproto"
 )
 
 // SocketCollector collect sockets statistics
@@ -27,7 +27,7 @@ func (m *SocketCollector) Collect(now time.Time) ([]byte, error) {
 		return nil, err
 	}
 
-	metric := &tproto.Metric{Body: &tproto.Metric_Tcp{Tcp: r}}
+	metric := &gproto.Metric{Body: &gproto.Metric_Tcp{Tcp: r}}
 	val, err := proto.Marshal(metric)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -36,7 +36,7 @@ func (m *SocketCollector) Collect(now time.Time) ([]byte, error) {
 	return val, nil
 }
 
-func (m *SocketCollector) doCollect(now time.Time) (*tproto.TcpMetric, error) {
+func (m *SocketCollector) doCollect(now time.Time) (*gproto.TcpMetric, error) {
 	c := cmd.NewCmd(m.config.PathSS, m.config.ArgSS)
 	ctx, cancel := context.WithTimeout(context.Background(), m.config.Timeout)
 	defer cancel()
@@ -46,9 +46,9 @@ func (m *SocketCollector) doCollect(now time.Time) (*tproto.TcpMetric, error) {
 		return nil, errors.Wrap(ctx.Err(), "ss timeout")
 
 	case st := <-c.Start():
-		var t tproto.TcpMetric
+		var t gproto.TcpMetric
 		t.Timestamp = now.Unix()
-		t.Type = tproto.MetricType_TCP
+		t.Type = gproto.MetricType_TCP
 
 		parsing.ParseSS(&t, st.Stdout)
 		return &t, nil
