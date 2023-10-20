@@ -11,6 +11,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/gogo/protobuf/proto"
 	"github.com/rs/zerolog/log"
+	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/afero"
 
 	"github.com/zperf/tcpmon/tcpmon/storage"
@@ -108,6 +109,8 @@ type ExportOptions struct {
 	Bucket    string
 	Token     string
 	DbAddress string
+
+	Bar *progressbar.ProgressBar
 }
 
 func (r *FastExporter) Export(w io.Writer, option *ExportOptions) error {
@@ -162,7 +165,9 @@ func (r *FastExporter) Export(w io.Writer, option *ExportOptions) error {
 	}
 
 	if !needExport {
-		log.Info().Time("start", start).Time("end", end).Msg("ignored")
+		if option.Bar == nil {
+			log.Info().Time("start", start).Time("end", end).Msg("ignored")
+		}
 		return ErrTimePointNotIncluded
 	}
 
@@ -179,6 +184,9 @@ func (r *FastExporter) Export(w io.Writer, option *ExportOptions) error {
 	}
 
 	for _, rr := range ra {
+		if option.Bar != nil {
+			option.Bar.Add(1)
+		}
 		jobs <- rr
 	}
 

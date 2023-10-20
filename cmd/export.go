@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog/log"
+	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -52,6 +54,9 @@ var exportCmd = &cobra.Command{
 			writer = fh
 		}
 
+		bar := progressbar.Default(-1, "Exporting")
+		defer bar.Close()
+
 		token := viper.GetString("export-token")
 		exportOption := influxdb.ExportOptions{
 			Hostname:  hostname,
@@ -62,6 +67,7 @@ var exportCmd = &cobra.Command{
 			Bucket:    viper.GetString("export-bucket"),
 			Token:     token,
 			DbAddress: viper.GetString("export-db"),
+			Bar:       bar,
 		}
 
 		if s.IsDir() {
@@ -83,8 +89,12 @@ var exportCmd = &cobra.Command{
 				err = exportFile(filepath.Join(path, f.Name()), writer, &exportOption)
 				if err != nil {
 					if errors.Is(err, influxdb.ErrTimePointNotIncluded) {
-						log.Info().Str("file", f.Name()).
-							Msg("File ignored since there is no target time point in it")
+						if exportOption.Bar != nil {
+							bar.Describe(fmt.Sprintf("Ignore %s", path))
+						} else {
+							log.Info().Str("file", f.Name()).
+								Msg("File ignored since there is no target time point in it")
+						}
 					} else {
 						log.Fatal().Err(err).Str("file", f.Name()).Msg("Export data files failed")
 					}
@@ -107,6 +117,10 @@ var exportCmd = &cobra.Command{
 }
 
 func exportFile(path string, w io.Writer, options *influxdb.ExportOptions) error {
+	if options.Bar != nil {
+		options.Bar.Describe(path)
+	}
+
 	exporter, err := influxdb.NewFastExporter(path, nil)
 	if err != nil {
 		return err
