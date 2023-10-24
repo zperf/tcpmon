@@ -92,7 +92,7 @@ func (c *MetricConv) Nic(metric *gproto.NicMetric) []*write.Point {
 }
 
 func getPort(addr string) string {
-	p := strings.Index(addr, ":")
+	p := strings.LastIndex(addr, ":")
 	if p == -1 {
 		return ""
 	}
