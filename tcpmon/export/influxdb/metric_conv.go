@@ -91,6 +91,22 @@ func (c *MetricConv) Nic(metric *gproto.NicMetric) []*write.Point {
 	return points
 }
 
+func getPort(addr string) string {
+	p := strings.Index(addr, ":")
+	if p == -1 {
+		return ""
+	}
+	return addr[p+1:]
+}
+
+// b2i: bool to int
+func b2i(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
 func (c *MetricConv) Tcp(metric *gproto.TcpMetric) []*write.Point {
 	ts := time.Unix(metric.GetTimestamp(), 0)
 	points := make([]*write.Point, 0)
@@ -98,7 +114,9 @@ func (c *MetricConv) Tcp(metric *gproto.TcpMetric) []*write.Point {
 	for _, s := range metric.GetSockets() {
 		tags := map[string]string{
 			"LocalAddr": s.LocalAddr,
+			"LocalPort": getPort(s.LocalAddr),
 			"PeerAddr":  s.PeerAddr,
+			"PeerPort":  getPort(s.PeerAddr),
 			"Hostname":  c.Hostname,
 		}
 
@@ -129,14 +147,6 @@ func (c *MetricConv) Tcp(metric *gproto.TcpMetric) []*write.Point {
 		points = append(points, p)
 		p = write.NewPoint("tcp", tags,
 			map[string]interface{}{"SendQ": s.SendQ},
-			ts)
-		points = append(points, p)
-		p = write.NewPoint("tcp", tags,
-			map[string]interface{}{"LocalAddr": s.LocalAddr},
-			ts)
-		points = append(points, p)
-		p = write.NewPoint("tcp", tags,
-			map[string]interface{}{"PeerAddr": s.PeerAddr},
 			ts)
 		points = append(points, p)
 
@@ -178,19 +188,19 @@ func (c *MetricConv) Tcp(metric *gproto.TcpMetric) []*write.Point {
 		points = append(points, p)
 
 		p = write.NewPoint("tcp", tags,
-			map[string]interface{}{"Ts": s.Ts},
+			map[string]interface{}{"Ts": b2i(s.Ts)},
 			ts)
 		points = append(points, p)
 		p = write.NewPoint("tcp", tags,
-			map[string]interface{}{"Sack": s.Sack},
+			map[string]interface{}{"Sack": b2i(s.Sack)},
 			ts)
 		points = append(points, p)
 		p = write.NewPoint("tcp", tags,
-			map[string]interface{}{"Cubic": s.Cubic},
+			map[string]interface{}{"Cubic": b2i(s.Cubic)},
 			ts)
 		points = append(points, p)
 		p = write.NewPoint("tcp", tags,
-			map[string]interface{}{"AppLimited": s.AppLimited},
+			map[string]interface{}{"AppLimited": b2i(s.AppLimited)},
 			ts)
 		points = append(points, p)
 		p = write.NewPoint("tcp", tags,
@@ -334,11 +344,11 @@ func (c *MetricConv) Tcp(metric *gproto.TcpMetric) []*write.Point {
 			ts)
 		points = append(points, p)
 		p = write.NewPoint("tcp", tags,
-			map[string]interface{}{"Ecn": s.Ecn},
+			map[string]interface{}{"Ecn": b2i(s.Ecn)},
 			ts)
 		points = append(points, p)
 		p = write.NewPoint("tcp", tags,
-			map[string]interface{}{"Ecnseen": s.Ecnseen},
+			map[string]interface{}{"Ecnseen": b2i(s.Ecnseen)},
 			ts)
 		points = append(points, p)
 	}
