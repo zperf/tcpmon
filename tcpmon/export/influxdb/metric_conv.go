@@ -125,6 +125,7 @@ func (c *MetricConv) Tcp(metric *gproto.TcpMetric) []*write.Point {
 		}), ";")
 		if processText != "" {
 			tags["Process"] = processText
+			tags["ProcessName"] = s.GetProcesses()[0].GetName()
 		}
 
 		for _, timer := range s.GetTimers() {
