@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
-	"github.com/gogo/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/zperf/tcpmon/tcpmon/gproto"
 	"github.com/zperf/tcpmon/tcpmon/parsing"
@@ -35,6 +35,7 @@ func (m *NetstatCollector) Collect(now time.Time) ([]byte, error) {
 func (m *NetstatCollector) doCollect(now time.Time) (*gproto.NetstatMetric, error) {
 	var metric gproto.NetstatMetric
 	metric.Timestamp = now.Unix()
+	metric.Type = gproto.MetricType_NET
 
 	err := CollectProc("snmp", &metric)
 	if err != nil {
