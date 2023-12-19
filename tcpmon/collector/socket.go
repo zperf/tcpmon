@@ -43,7 +43,8 @@ func (m *SocketCollector) doCollect(now time.Time) (*gproto.TcpMetric, error) {
 
 	select {
 	case <-ctx.Done():
-		return nil, errors.Wrap(ctx.Err(), "ss timeout")
+		err := c.Stop()
+		return nil, errors.Wrap(errors.CombineErrors(ctx.Err(), err), "ss timeout")
 
 	case st := <-c.Start():
 		var t gproto.TcpMetric

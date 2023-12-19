@@ -40,7 +40,8 @@ func (m *NicCollector) doCollect(now time.Time) (*gproto.NicMetric, error) {
 
 	select {
 	case <-ctx.Done():
-		return nil, errors.Wrap(ctx.Err(), "ifconfig timeout")
+		err := c.Stop()
+		return nil, errors.Wrap(errors.CombineErrors(ctx.Err(), err), "ifconfig timeout")
 	case st := <-c.Start():
 		var nics gproto.NicMetric
 		nics.Type = gproto.MetricType_NIC
